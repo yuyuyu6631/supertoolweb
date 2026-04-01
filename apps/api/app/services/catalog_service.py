@@ -93,11 +93,15 @@ def _parse_import_editor_comment(value: str | None) -> dict[str, str]:
 
 def _tool_row_to_summary(tool: Tool) -> ToolSummary:
     tags = [_repair_text(item.tag.name) for item in tool.tags] if tool.tags else []
+    # Get category name from relationship if available (primary category is first)
+    category_name = tool.category_name
+    if tool.categories and len(tool.categories) > 0:
+        category_name = tool.categories[0].category.name
     return ToolSummary(
         id=tool.id,
         slug=tool.slug,
         name=_repair_text(tool.name),
-        category=_repair_text(tool.category_name),
+        category=_repair_text(category_name),
         score=tool.score,
         summary=_repair_text(tool.summary),
         tags=tags,
@@ -108,6 +112,7 @@ def _tool_row_to_summary(tool: Tool) -> ToolSummary:
         status=tool.status,
         featured=tool.featured,
         createdAt=tool.created_on,
+        price=_repair_text(tool.price),
     )
 
 
@@ -121,7 +126,6 @@ def _tool_row_to_detail(tool: Tool) -> ToolDetail:
         developer=_repair_text(tool.developer) or legacy_meta.get("developer", ""),
         country=_repair_text(tool.country) or legacy_meta.get("country", ""),
         city=_repair_text(tool.city) or legacy_meta.get("city", ""),
-        price=_repair_text(tool.price) or legacy_meta.get("price", ""),
         platforms=_repair_text(tool.platforms) or legacy_meta.get("platforms", ""),
         vpnRequired=_repair_text(tool.vpn_required) or legacy_meta.get("vpn_required", ""),
         targetAudience=[],
@@ -134,22 +138,19 @@ def _tool_row_to_detail(tool: Tool) -> ToolDetail:
     )
 
 
-def list_tools() -> list[ToolSummary]:
-    with SessionLocal() as db:
-        rows = db.query(Tool).all()
-        return [_tool_row_to_summary(row) for row in rows]
+def list_tools(*, db) -> list[ToolSummary]:
+    rows = db.query(Tool).all()
+    return [_tool_row_to_summary(row) for row in rows]
 
 
-def list_tools_raw() -> list[ToolDetail]:
-    with SessionLocal() as db:
-        rows = db.query(Tool).all()
-        return [_tool_row_to_detail(row) for row in rows]
+def list_tools_raw(*, db) -> list[ToolDetail]:
+    rows = db.query(Tool).all()
+    return [_tool_row_to_detail(row) for row in rows]
 
 
-def get_tool(slug: str) -> ToolDetail | None:
-    with SessionLocal() as db:
-        row = db.query(Tool).filter(Tool.slug == slug).first()
-        return _tool_row_to_detail(row) if row else None
+def get_tool(*, db, slug: str) -> ToolDetail | None:
+    row = db.query(Tool).filter(Tool.slug == slug).first()
+    return _tool_row_to_detail(row) if row else None
 
 
 def _normalize_status_filter(status_slug: str | None) -> str:
@@ -231,52 +232,177 @@ def _build_presets(items: list[ToolSummary]) -> list[PresetView]:
 
 def get_tools_directory(
     *,
+    db,
     q: str | None,
     category_slug: str | None,
     tag_slug: str | None,
     status_slug: str | None,
+    price_slug: str | None,
     sort: str,
     view: str,
     page: int,
     page_size: int,
 ) -> ToolsDirectoryResponse:
-    tools = list_tools()
-    normalized_query = q.strip() if q else ""
-    preset = view if view in PRESET_DEFINITIONS else "hot"
+    # Build base query
+    query = db.query(Tool)
+
+    # Status filtering
     active_status = _normalize_status_filter(status_slug)
-    apply_preset = status_slug is None
+    if active_status != ALL_STATUS_SLUG:
+        query = query.filter(Tool.status == active_status)
 
-    base_items = [
-        item
-        for item in tools
-        if (not normalized_query or _matches_query(item, normalized_query))
-        and (not apply_preset or _matches_preset(item, preset))
-    ]
-
-    categories = _build_facets(base_items, "category")
-    tags = _build_facets(base_items, "tag")
-    statuses = _build_status_facets(base_items)
-
-    filtered_items = _filter_items_by_status(base_items, active_status)
+    # Category filtering: join tool_categories and filter by category slug
     if category_slug:
-        filtered_items = [item for item in filtered_items if _slugify(item.category) == category_slug]
-    if tag_slug:
-        filtered_items = [item for item in filtered_items if any(_slugify(tag) == tag_slug for tag in item.tags)]
+        from app.models.models import ToolCategory, Category
+        query = query.join(ToolCategory).join(Category).filter(Category.slug == category_slug)
 
-    sorted_items = _sort_tools(filtered_items, sort, preset)
-    visible_count = page * page_size
+    # Tag filtering: join tool_tags and filter by tag slug (by name slug)
+    if tag_slug:
+        from app.models.models import ToolTag, Tag
+        query = query.join(ToolTag).filter(
+            # Tag name slug matching - we need to check after slugify
+            # Since slug isn't stored, filter after getting results
+        )
+
+    # Get all matching rows for facet counting (we need all items for facets)
+    # We still do facets in memory because we need counts across all filters
+    all_matching_rows = query.all()
+
+    # Filter tag after slug matching since slug isn't stored in DB
+    filtered_rows = all_matching_rows
+    if tag_slug:
+        filtered_rows = [
+            row for row in filtered_rows
+            if any(_slugify(tag.name) == tag_slug for tag in row.tags)
+        ]
+
+    # Filter price after getting from DB (price type detection needs text processing)
+    if price_slug and price_slug in PRICE_TYPE_LABELS:
+        filtered_rows = [
+            row for row in filtered_rows
+            if _matches_price_filter(_tool_row_to_summary(row), price_slug)
+        ]
+
+    # Convert all filtered rows to summary for facet building
+    all_filtered_summaries = [_tool_row_to_summary(row) for row in filtered_rows]
+
+    # Build facets from all filtered items
+    categories = _build_facets(all_filtered_summaries, "category")
+    tags = _build_facets(all_filtered_summaries, "tag")
+    statuses = _build_status_facets(all_filtered_summaries)
+    price_facets = _build_price_facets(all_filtered_summaries)
+
+    # Build paginated query for final results
+    paginated_query = db.query(Tool)
+    if active_status != ALL_STATUS_SLUG:
+        paginated_query = paginated_query.filter(Tool.status == active_status)
+    if category_slug:
+        from app.models.models import ToolCategory, Category
+        paginated_query = paginated_query.join(ToolCategory).join(Category).filter(Category.slug == category_slug)
+    # Tag filtering done in-memory after pagination because we need slugify matching
+    # Price filtering also done in-memory after pagination
+
+    # Apply sorting at database level
+    preset = view if view in PRESET_DEFINITIONS else "hot"
+    if preset == "latest" or sort == "latest":
+        paginated_query = paginated_query.order_by(Tool.created_on.desc())
+    elif sort == "name":
+        paginated_query = paginated_query.order_by(Tool.name)
+    else:
+        # Featured first, then score descending, then created_on descending
+        paginated_query = paginated_query.order_by(
+            Tool.featured.desc(),
+            Tool.score.desc(),
+            Tool.created_on.desc()
+        )
+
+    # Get total count
+    total = len(filtered_rows)
+
+    # Pagination: offset/limit
+    start = (page - 1) * page_size
+    paginated_rows = paginated_query.offset(start).limit(page_size).all()
+
+    # Filter again for tag and price since we can't do it all in SQL
+    # This is okay because we've already limited to page_size rows after offset
+    final_rows = paginated_rows
+    if tag_slug:
+        final_rows = [
+            row for row in final_rows
+            if any(_slugify(tag.name) == tag_slug for tag in row.tags)
+        ]
+    if price_slug and price_slug in PRICE_TYPE_LABELS:
+        final_rows = [
+            row for row in final_rows
+            if _matches_price_filter(_tool_row_to_summary(row), price_slug)
+        ]
+
+    # Convert to ToolSummary for response
+    final_items = [_tool_row_to_summary(row) for row in final_rows]
+
+    # Get all tools for presets count (presets counts are on all tools)
+    all_tools = list_tools(db=db)
+
     return ToolsDirectoryResponse(
-        items=sorted_items[:visible_count],
-        total=len(sorted_items),
+        items=final_items,
+        total=total,
         page=page,
         pageSize=page_size,
-        hasMore=len(sorted_items) > visible_count,
+        hasMore=total > (start + page_size),
         categories=categories,
         tags=tags,
         statuses=statuses,
-        presets=_build_presets(tools),
+        priceFacets=price_facets,
+        presets=_build_presets(all_tools),
     )
 
+
+PRICE_TYPE_LABELS = {
+    "free": "免费",
+    "freemium": "免费增值",
+    "subscription": "订阅",
+    "one-time": "一次性付费",
+}
+
+def _detect_price_type(price_text: str | None) -> str:
+    """Detect price type from price text."""
+    if not price_text:
+        return "other"
+    text = price_text.lower()
+    if any(word in text for word in ["免费", "free"]):
+        return "free"
+    if any(word in text for word in ["免费增值", "freemium", "免费 增值"]):
+        return "freemium"
+    if any(word in text for word in ["订阅", "月付", "年付", "monthly", "yearly", "subscription"]):
+        return "subscription"
+    if any(word in text for word in ["付费", "一次性", "终身授权", "one-time", "lifetime"]):
+        return "one-time"
+    return "other"
+
+def _build_price_facets(items: list[ToolSummary]) -> list[FacetOption]:
+    """Build price facets from tools."""
+    counter: Counter[str] = Counter()
+    for item in items:
+        # Use price field if available, otherwise detect from text
+        text = f"{item.price} {item.name} {item.summary} {' '.join(item.tags)}".lower()
+        price_type = _detect_price_type(text)
+        if price_type != "other":
+            counter[price_type] += 1
+    facets = [
+        FacetOption(slug=slug, label=PRICE_TYPE_LABELS[slug], count=count)
+        for slug, count in sorted(counter.items(), key=lambda pair: (-pair[1], pair[0]))
+        if count > 0
+    ]
+    return facets
+
+def _matches_price_filter(tool: ToolSummary, price_slug: str) -> bool:
+    """Check if tool matches price filter."""
+    text = f"{tool.price} {tool.name} {tool.summary} {' '.join(tool.tags)}".lower()
+    detected = _detect_price_type(text)
+    if detected == price_slug:
+        return True
+    # If we couldn't detect, don't match filtered results
+    return False
 
 def _build_status_facets(items: list[ToolSummary]) -> list[FacetOption]:
     labels = {
@@ -292,55 +418,59 @@ def _build_status_facets(items: list[ToolSummary]) -> list[FacetOption]:
     return facets
 
 
-def list_categories() -> list[CategorySummary]:
-    with SessionLocal() as db:
-        rows = db.query(Category).all()
-        return [
-            CategorySummary(
-                slug=row.slug,
-                name=_repair_text(row.name),
-                description=_repair_text(row.description),
-            )
-            for row in rows
-        ]
+def list_categories(*, db) -> list[CategorySummary]:
+    rows = db.query(Category).all()
+    return [
+        CategorySummary(
+            slug=row.slug,
+            name=_repair_text(row.name),
+            description=_repair_text(row.description),
+        )
+        for row in rows
+    ]
 
 
-def list_tools_by_category(category_slug: str) -> list[ToolSummary]:
-    with SessionLocal() as db:
-        category = db.query(Category).filter(Category.slug == category_slug).first()
-        if not category:
-            return []
-        rows = db.query(Tool).filter(Tool.category_name == category.name).all()
-        return [_tool_row_to_summary(row) for row in rows if row.status == PUBLIC_TOOL_STATUS]
+def list_tools_by_category(*, db, category_slug: str) -> list[ToolSummary]:
+    from app.models.models import ToolCategory
+    category = db.query(Category).filter(Category.slug == category_slug).first()
+    if not category:
+        return []
+    # Query through join to tool_categories for consistent data from relation
+    rows = (
+        db.query(Tool)
+        .join(ToolCategory)
+        .join(Category)
+        .filter(Category.id == category.id)
+        .all()
+    )
+    return [_tool_row_to_summary(row) for row in rows if row.status == PUBLIC_TOOL_STATUS]
 
 
-def list_scenarios() -> list[ScenarioSummary]:
-    with SessionLocal() as db:
-        rows = db.query(Scenario).all()
-        scenarios = [_build_scenario_summary(row, db) for row in rows]
-        return [scenario for scenario in scenarios if scenario.toolCount]
+def list_scenarios(*, db) -> list[ScenarioSummary]:
+    rows = db.query(Scenario).all()
+    scenarios = [_build_scenario_summary(row, db) for row in rows]
+    return [scenario for scenario in scenarios if scenario.toolCount]
 
 
-def get_scenario(slug: str) -> ScenarioSummary | None:
-    with SessionLocal() as db:
-        row = db.query(Scenario).filter(Scenario.slug == slug).first()
-        if not row:
-            return None
-        scenario = _build_scenario_summary(row, db)
-        return scenario if scenario.toolCount else None
+def get_scenario(*, db, slug: str) -> ScenarioSummary | None:
+    row = db.query(Scenario).filter(Scenario.slug == slug).first()
+    if not row:
+        return None
+    scenario = _build_scenario_summary(row, db)
+    return scenario if scenario.toolCount else None
 
 
 def _build_scenario_summary(scenario: Scenario, db) -> ScenarioSummary:
     links = db.query(ScenarioTool).filter(ScenarioTool.scenario_id == scenario.id).all()
-    primary_tools: list[str] = []
-    alternative_tools: list[str] = []
+    primary_tools: list[ToolSummary] = []
+    alternative_tools: list[ToolSummary] = []
 
     for link in links:
         tool_row = db.query(Tool).filter(Tool.id == link.tool_id).first()
         if not tool_row or tool_row.status != PUBLIC_TOOL_STATUS:
             continue
         target = primary_tools if link.is_primary else alternative_tools
-        target.append(tool_row.slug)
+        target.append(_tool_row_to_summary(tool_row))
 
     return ScenarioSummary(
         id=scenario.id,
@@ -382,17 +512,15 @@ def _build_ranking_section(ranking: Ranking, db) -> RankingSection:
     )
 
 
-def list_rankings() -> list[RankingSection]:
-    with SessionLocal() as db:
-        rows = db.query(Ranking).all()
-        sections = [_build_ranking_section(row, db) for row in rows]
-        return [section for section in sections if section.items]
+def list_rankings(*, db) -> list[RankingSection]:
+    rows = db.query(Ranking).all()
+    sections = [_build_ranking_section(row, db) for row in rows]
+    return [section for section in sections if section.items]
 
 
-def get_ranking(slug: str) -> RankingSection | None:
-    with SessionLocal() as db:
-        row = db.query(Ranking).filter(Ranking.slug == slug).first()
-        if not row:
-            return None
-        section = _build_ranking_section(row, db)
-        return section if section.items else None
+def get_ranking(*, db, slug: str) -> RankingSection | None:
+    row = db.query(Ranking).filter(Ranking.slug == slug).first()
+    if not row:
+        return None
+    section = _build_ranking_section(row, db)
+    return section if section.items else None

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
+import AppProviders from "@/src/app/components/AppProviders";
 import RouteFeedback from "@/src/app/components/RouteFeedback";
 import "./globals.css";
 
@@ -37,10 +38,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </filter>
           </defs>
         </svg>
-        <Suspense fallback={null}>
-          <RouteFeedback />
-        </Suspense>
-        {children}
+        <AppProviders>
+          <Suspense fallback={null}>
+            <RouteFeedback />
+          </Suspense>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

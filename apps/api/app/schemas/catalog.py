@@ -31,6 +31,7 @@ class ToolsDirectoryResponse(BaseModel):
     categories: list[FacetOption]
     tags: list[FacetOption]
     statuses: list[FacetOption]
+    priceFacets: list[FacetOption]
     presets: list[PresetView]
 
 
@@ -41,8 +42,8 @@ class ScenarioSummary(BaseModel):
     description: str
     problem: str
     toolCount: int
-    primaryTools: list[str]
-    alternativeTools: list[str]
+    primaryTools: list[ToolSummary]
+    alternativeTools: list[ToolSummary]
     targetAudience: list[str]
 
 

@@ -73,6 +73,9 @@ export default function ToolDetailPage({ tool, relatedTools }: ToolDetailPagePro
                 <div>
                   <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-3xl font-semibold tracking-tight text-slate-950 md:text-5xl">{tool.name}</h1>
+                    <span className="flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-lg font-semibold text-amber-600">
+                      ⭐ {tool.score.toFixed(1)}
+                    </span>
                     <Link href={categoryHref} className="rounded-full bg-white/70 px-3 py-1 text-sm font-medium text-slate-700">
                       {tool.category}
                     </Link>
@@ -149,18 +152,34 @@ export default function ToolDetailPage({ tool, relatedTools }: ToolDetailPagePro
                 <div className="panel-base rounded-[28px] p-5">
                   <h2 className="text-lg font-semibold text-slate-900">同类工具</h2>
                   <div className="mt-4 space-y-4">
-                    {relatedTools.map((item) => (
-                      <ToolCard
-                        key={item.slug}
-                        slug={item.slug}
-                        name={item.name}
-                        summary={item.summary}
-                        tags={item.tags}
-                        url={item.officialUrl}
-                        logoPath={item.logoPath}
-                        status={item.status}
-                      />
-                    ))}
+                    {relatedTools.map((item) => {
+                      // Detect price type from price field first, then summary and tags
+                      const text = `${item.price} ${item.name} ${item.summary} ${item.tags.join(' ')}`.toLowerCase();
+                      let priceLabel: string | null = null;
+                      if (text.includes('免费') || text.includes('free')) {
+                        priceLabel = 'free';
+                      } else if (text.includes('免费增值') || text.includes('freemium')) {
+                        priceLabel = 'freemium';
+                      } else if (text.includes('订阅') || text.includes('月付') || text.includes('yearly') || text.includes('monthly')) {
+                        priceLabel = 'subscription';
+                      } else if (text.includes('付费') || text.includes('一次性') || text.includes('lifetime')) {
+                        priceLabel = 'one-time';
+                      }
+                      return (
+                        <ToolCard
+                          key={item.slug}
+                          slug={item.slug}
+                          name={item.name}
+                          summary={item.summary}
+                          tags={item.tags}
+                          url={item.officialUrl}
+                          logoPath={item.logoPath}
+                          status={item.status}
+                          score={item.score}
+                          priceLabel={priceLabel}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}

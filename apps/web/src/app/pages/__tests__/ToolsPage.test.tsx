@@ -3,6 +3,18 @@ import { render, screen } from "@testing-library/react";
 import ToolsPage from "../ToolsPage";
 import type { ToolsDirectoryResponse } from "../../lib/catalog-types";
 
+vi.mock("../../components/Header", () => ({
+  default: () => <div>Header</div>,
+}));
+
+vi.mock("../../components/Footer", () => ({
+  default: () => <div>Footer</div>,
+}));
+
+vi.mock("../../components/Breadcrumbs", () => ({
+  default: () => <div>Breadcrumbs</div>,
+}));
+
 const directory: ToolsDirectoryResponse = {
   items: [
     {
@@ -22,32 +34,33 @@ const directory: ToolsDirectoryResponse = {
       createdAt: "2026-03-01",
     },
   ],
-  total: 1,
-  page: 1,
+  total: 28,
+  page: 2,
   pageSize: 9,
-  hasMore: false,
+  hasMore: true,
   categories: [{ slug: "general", label: "通用助手", count: 1 }],
   tags: [{ slug: "chat", label: "对话", count: 1 }],
   statuses: [{ slug: "draft", label: "草稿", count: 1 }],
-  presets: [
-    { id: "hot", label: "热门", description: "优先查看当前目录中的高频工具。", count: 1 },
-  ],
+  presets: [{ id: "hot", label: "热门", description: "优先查看当前目录中的高频工具。", count: 1 }],
 };
 
 describe("ToolsPage", () => {
-  it("renders directory filters and results", () => {
-    render(<ToolsPage directory={directory} state={{ view: "hot" }} />);
+  it("renders directory filters and numbered pagination", () => {
+    render(<ToolsPage directory={directory} state={{ view: "hot", page: "2" }} />);
 
     expect(screen.getByRole("heading", { name: "工具分类" })).toBeInTheDocument();
     expect(screen.getByText("筛选条件")).toBeInTheDocument();
     expect(screen.getByText("ChatGPT")).toBeInTheDocument();
     expect(screen.getAllByText("草稿").length).toBeGreaterThan(0);
+    expect(screen.getByRole("navigation", { name: "分页导航" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "1" })).toHaveAttribute("href", "/tools?view=hot&page=1");
+    expect(screen.getByRole("link", { name: "2" })).toHaveAttribute("aria-current", "page");
   });
 
   it("renders empty state with reset actions", () => {
     render(
       <ToolsPage
-        directory={{ ...directory, items: [], total: 0 }}
+        directory={{ ...directory, items: [], total: 0, page: 1, hasMore: false }}
         state={{ q: "missing", view: "hot" }}
       />,
     );

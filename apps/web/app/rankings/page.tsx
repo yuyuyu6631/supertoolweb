@@ -55,15 +55,33 @@ export default async function Page() {
                           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                             TOP {item.rank}
                           </p>
-                          <ToolCard
-                            slug={item.tool.slug}
-                            name={item.tool.name}
-                            summary={item.tool.summary}
-                            tags={item.tool.tags}
-                            url={item.tool.officialUrl}
-                            logoPath={item.tool.logoPath}
-                            status={item.tool.status}
-                          />
+                          {(() => {
+                            // Detect price type from price field first, then summary and tags
+                            const text = `${item.tool.price} ${item.tool.name} ${item.tool.summary} ${item.tool.tags.join(' ')}`.toLowerCase();
+                            let priceLabel: string | null = null;
+                            if (text.includes('免费') || text.includes('free')) {
+                              priceLabel = 'free';
+                            } else if (text.includes('免费增值') || text.includes('freemium')) {
+                              priceLabel = 'freemium';
+                            } else if (text.includes('订阅') || text.includes('月付') || text.includes('yearly') || text.includes('monthly')) {
+                              priceLabel = 'subscription';
+                            } else if (text.includes('付费') || text.includes('一次性') || text.includes('lifetime')) {
+                              priceLabel = 'one-time';
+                            }
+                            return (
+                              <ToolCard
+                                slug={item.tool.slug}
+                                name={item.tool.name}
+                                summary={item.tool.summary}
+                                tags={item.tool.tags}
+                                url={item.tool.officialUrl}
+                                logoPath={item.tool.logoPath}
+                                status={item.tool.status}
+                                score={item.tool.score}
+                                priceLabel={priceLabel}
+                              />
+                            );
+                          })()}
                           <p className="mt-3 text-sm leading-6 text-slate-600">{item.reason}</p>
                         </div>
                       ))}

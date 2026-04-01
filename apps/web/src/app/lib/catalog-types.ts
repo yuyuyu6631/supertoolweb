@@ -13,6 +13,7 @@ export interface ToolSummary {
   status: "published" | "draft" | "archived";
   featured: boolean;
   createdAt: string;
+  price: string;
 }
 
 export interface ToolDetail extends ToolSummary {
@@ -55,6 +56,7 @@ export interface ToolsDirectoryResponse {
   categories: FacetOption[];
   tags: FacetOption[];
   statuses: FacetOption[];
+  priceFacets: FacetOption[];
   presets: PresetView[];
 }
 
@@ -65,8 +67,8 @@ export interface ScenarioSummary {
   description: string;
   problem: string;
   toolCount: number;
-  primaryTools: string[];
-  alternativeTools: string[];
+  primaryTools: ToolSummary[];
+  alternativeTools: ToolSummary[];
   targetAudience: string[];
 }
 

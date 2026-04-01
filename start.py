@@ -24,10 +24,11 @@ SECRET_FILE = ROOT / "秘钥.txt"
 
 DEFAULT_API_PORT = 8000
 DEFAULT_WEB_PORT = 3000
+START_LOCK_FILE = ROOT / ".start.lock"
 
 DEFAULT_ENV = {
     "NEXT_PUBLIC_API_BASE_URL": f"http://localhost:{DEFAULT_API_PORT}",
-    "DATABASE_URL": "sqlite:///./xingdianping.db",
+    "DATABASE_URL": "mysql+pymysql://xingdianping:xingdianping@localhost:3306/xingdianping",
     "REDIS_URL": "redis://localhost:6379/0",
     "AI_PROVIDER": "stub",
     "AI_API_KEY": "",
@@ -73,6 +74,120 @@ def warn(message: str) -> None:
 def fail(message: str) -> None:
     write_console_line(f"[start][error] {message}", stream=sys.stderr)
     raise SystemExit(1)
+
+
+def read_lock_file(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    return data if isinstance(data, dict) else None
+
+
+def process_is_running(pid: int) -> bool:
+    if pid <= 0:
+        return False
+
+    try:
+        if os.name == "nt":
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+            return result.returncode == 0 and f'"{pid}"' in result.stdout
+
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def lock_matches_start_script(pid: int) -> bool:
+    if pid <= 0:
+        return False
+
+    if os.name == "nt":
+        script = rf"""
+$proc = Get-CimInstance Win32_Process -Filter "ProcessId = {pid}" -ErrorAction SilentlyContinue
+if (-not $proc) {{
+  return
+}}
+$proc.CommandLine
+"""
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        command_line = result.stdout.strip().lower()
+        return result.returncode == 0 and "start.py" in command_line
+
+    return process_is_running(pid)
+
+
+def acquire_start_lock(path: Path) -> None:
+    live_matches = list_other_start_script_processes()
+    if live_matches:
+        pid = int(live_matches[0].get("pid", 0) or 0)
+        fail(
+            f"Another start.py process is already running (pid={pid}). "
+            "Stop the existing launcher first instead of starting a second copy."
+        )
+
+    existing = read_lock_file(path)
+    if existing:
+        pid = int(existing.get("pid", 0) or 0)
+        if pid and pid != os.getpid() and process_is_running(pid) and lock_matches_start_script(pid):
+            web_port = existing.get("web_port", DEFAULT_WEB_PORT)
+            api_port = existing.get("api_port", DEFAULT_API_PORT)
+            fail(
+                f"start.py is already running (pid={pid}). "
+                f"Web may already be available at http://localhost:{web_port}, "
+                f"API at http://localhost:{api_port}. Stop the existing launcher first."
+            )
+
+    payload = {
+        "pid": os.getpid(),
+        "created_at": time.time(),
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+
+
+def update_start_lock(path: Path, *, api_port: int, web_port: int) -> None:
+    payload = {
+        "pid": os.getpid(),
+        "created_at": time.time(),
+        "api_port": api_port,
+        "web_port": web_port,
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=True), encoding="utf-8")
+
+
+def release_start_lock(path: Path) -> None:
+    existing = read_lock_file(path)
+    if not existing:
+        return
+
+    if int(existing.get("pid", 0) or 0) != os.getpid():
+        return
+
+    try:
+        path.unlink()
+    except OSError:
+        pass
 
 
 def load_env_file(path: Path) -> dict[str, str]:
@@ -144,18 +259,32 @@ def ensure_env_file() -> dict[str, str]:
 
 def print_help() -> None:
     print(
-        "Usage: python start.py\n"
-        "Starts the active monorepo app stack: Next.js frontend in apps/web and FastAPI in apps/api.",
+        "Usage: python start.py [--stop|--restart]\n"
+        "Starts the active monorepo app stack: Next.js frontend in apps/web and FastAPI in apps/api.\n"
+        "  --stop     Stop the existing launcher and its dev servers.\n"
+        "  --restart  Stop the existing launcher first, then start again.",
         flush=True,
     )
 
 
-def parse_args(argv: list[str]) -> None:
+def parse_args(argv: list[str]) -> str:
+    action = "start"
     for argument in argv[1:]:
         if argument in {"-h", "--help"}:
             print_help()
             raise SystemExit(0)
+        if argument == "--stop":
+            if action != "start":
+                fail("Use only one of --stop or --restart.")
+            action = "stop"
+            continue
+        if argument == "--restart":
+            if action != "start":
+                fail("Use only one of --stop or --restart.")
+            action = "restart"
+            continue
         fail(f"Unknown argument `{argument}`. The archived legacy frontend was removed from the runtime chain.")
+    return action
 
 
 def ensure_command(command: str, hint: str) -> None:
@@ -194,6 +323,64 @@ def normalize_json_result(payload: str) -> list[dict[str, object]]:
     return []
 
 
+def list_other_start_script_processes() -> list[dict[str, object]]:
+    if os.name == "nt":
+        powershell_script = r"""
+$proc = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*start.py*' } |
+  ForEach-Object {
+    [PSCustomObject]@{
+      pid = $_.ProcessId
+      command_line = $_.CommandLine
+    }
+  }
+$proc | ConvertTo-Json -Compress
+"""
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", powershell_script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if result.returncode != 0:
+            return []
+
+        return [
+            item
+            for item in normalize_json_result(result.stdout)
+            if int(item.get("pid", 0) or 0) not in {0, os.getpid()}
+        ]
+
+    result = subprocess.run(
+        ["ps", "-eo", "pid=,command="],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+
+    matches: list[dict[str, object]] = []
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped or "start.py" not in stripped:
+            continue
+        pid_text, _, command_line = stripped.partition(" ")
+        try:
+            pid = int(pid_text)
+        except ValueError:
+            continue
+        if pid != os.getpid():
+            matches.append({"pid": pid, "command_line": command_line.strip()})
+    return matches
+
+
 def _workspace_dev_process_matches(process: dict[str, object]) -> bool:
     pid = int(process.get("pid", 0) or 0)
     if pid == os.getpid():
@@ -204,10 +391,12 @@ def _workspace_dev_process_matches(process: dict[str, object]) -> bool:
         return False
 
     workspace_root = str(ROOT).lower()
-    next_signature = "node_modules\\next\\dist\\server\\lib\\start-server.js"
+    next_signatures = ("node_modules\\next\\dist\\server\\lib\\start-server.js", "next dev")
     api_signature = "-m uvicorn app.main:app"
 
-    if workspace_root in command_line and next_signature in command_line:
+    if any(signature in command_line for signature in next_signatures):
+        return True
+    if workspace_root in command_line and any(signature in command_line for signature in next_signatures):
         return True
     if api_signature in command_line:
         return True
@@ -291,10 +480,65 @@ def terminate_workspace_dev_processes() -> None:
     warn("Some stale workspace dev processes are still listening after cleanup; fallback ports may still be used.")
 
 
-def should_fallback_to_sqlite(database_url: str) -> bool:
-    if database_url not in KNOWN_LOCAL_MYSQL_URLS:
-        return False
-    return not is_port_in_use(3306)
+def stop_process_by_pid(pid: int, *, name: str) -> None:
+    if pid <= 0:
+        return
+
+    if not process_is_running(pid):
+        return
+
+    info(f"Stopping {name} (pid={pid})")
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+            )
+        else:
+            os.kill(pid, signal.SIGTERM)
+    except OSError:
+        return
+
+
+def stop_existing_launcher() -> bool:
+    stopped_any = False
+
+    before_cleanup = list_workspace_dev_processes_on_ports(DEV_PORT_CANDIDATES)
+    terminate_workspace_dev_processes()
+    if before_cleanup:
+        stopped_any = True
+
+    lock_data = read_lock_file(START_LOCK_FILE)
+    if lock_data:
+        lock_pid = int(lock_data.get("pid", 0) or 0)
+        if lock_pid and lock_pid != os.getpid():
+            stop_process_by_pid(lock_pid, name="existing launcher")
+            stopped_any = True
+
+    for process in list_other_start_script_processes():
+        pid = int(process.get("pid", 0) or 0)
+        if pid and pid != os.getpid():
+            stop_process_by_pid(pid, name="existing launcher")
+            stopped_any = True
+
+    if START_LOCK_FILE.exists():
+        try:
+            START_LOCK_FILE.unlink()
+            stopped_any = True
+        except OSError:
+            pass
+
+    if stopped_any:
+        info("Existing launcher processes and dev servers have been stopped.")
+    else:
+        info("No existing launcher or dev server processes were found.")
+
+    return stopped_any
 
 
 def find_available_port(preferred_port: int, name: str, max_attempts: int = 50) -> int:
@@ -359,6 +603,85 @@ def ensure_infra(env: dict[str, str]) -> None:
         env=env,
         label="Starting MySQL and Redis containers...",
     )
+
+
+def ensure_mysql_ready(env: dict[str, str]) -> None:
+    database_url = env.get("DATABASE_URL", "")
+    if database_url in KNOWN_LOCAL_MYSQL_URLS and not is_port_in_use(3306):
+        fail("MySQL is not reachable on localhost:3306. Start MySQL first; the launcher no longer falls back to SQLite.")
+
+
+def summarize_database_target(database_url: str) -> str:
+    if not database_url:
+        return "unknown database target"
+
+    if database_url.startswith("sqlite"):
+        return database_url
+
+    match = re.match(r"(?P<scheme>[^:]+)://(?P<rest>.+)", database_url)
+    if not match:
+        return database_url
+
+    scheme = match.group("scheme")
+    rest = match.group("rest")
+    if "@" in rest:
+        credentials, host_part = rest.split("@", 1)
+        if ":" in credentials:
+            username = credentials.split(":", 1)[0]
+            return f"{scheme}://{username}:***@{host_part}"
+    return database_url
+
+
+def run_database_migrations(env: dict[str, str]) -> None:
+    info(f"Database target: {summarize_database_target(env.get('DATABASE_URL', ''))}")
+    run_step(
+        [sys.executable, "-m", "alembic", "-c", str(API_DIR / "alembic.ini"), "upgrade", "head"],
+        cwd=API_DIR,
+        env=env,
+        label="Running database migrations...",
+    )
+
+
+def verify_auth_tables(env: dict[str, str]) -> None:
+    check_script = """
+import json
+import os
+from sqlalchemy import create_engine, inspect
+
+database_url = os.environ["DATABASE_URL"]
+engine = create_engine(database_url, future=True)
+try:
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    required = {"users", "user_sessions"}
+    missing = sorted(required - tables)
+    print(json.dumps({"tables": sorted(tables), "missing": missing}))
+finally:
+    engine.dispose()
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", check_script],
+        cwd=API_DIR,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    if result.returncode != 0:
+        fail(f"Could not inspect auth tables on startup. {result.stderr.strip() or result.stdout.strip()}")
+
+    try:
+        payload = json.loads(result.stdout.strip())
+    except json.JSONDecodeError:
+        fail(f"Could not parse auth table inspection result: {result.stdout.strip()}")
+
+    missing = payload.get("missing", [])
+    if missing:
+        fail(f"Auth tables are missing after migration: {', '.join(missing)}")
+
+    info("Verified auth tables: users, user_sessions.")
 
 
 def stream_output(process: subprocess.Popen[str], prefix: str) -> None:
@@ -465,89 +788,105 @@ def build_runtime_env(
     env["FRONTEND_PORT"] = str(web_port)
     env.setdefault("PYTHONUTF8", "1")
     env.setdefault("PYTHONIOENCODING", "utf-8")
-    if should_fallback_to_sqlite(env["DATABASE_URL"]):
-        warn("Local MySQL is unavailable; falling back to SQLite at ./xingdianping.db for development startup.")
-        env["DATABASE_URL"] = DEFAULT_ENV["DATABASE_URL"]
     return env
 
 
 def main() -> None:
-    parse_args(sys.argv)
+    action = parse_args(sys.argv)
 
-    info("Preparing one-click local startup for the monorepo web app...")
-    ensure_command("npm", "Install Node.js first.")
-    if not Path(sys.executable).exists():
-        fail(f"Python executable was not found: {sys.executable}")
-    if not WEB_DIR.exists():
-        fail(f"Frontend directory does not exist: {WEB_DIR}")
+    if action == "stop":
+        stop_existing_launcher()
+        return
 
-    file_env = ensure_env_file()
-    secret_env = load_secret_file(SECRET_FILE)
-    if secret_env.get("AI_API_KEY"):
-        info(f"Loaded AI settings from {SECRET_FILE.name}.")
-    elif SECRET_FILE.exists():
-        warn(f"{SECRET_FILE.name} was found, but no valid AI key was detected.")
+    if action == "restart":
+        stop_existing_launcher()
+        time.sleep(1)
 
-    terminate_workspace_dev_processes()
+    acquire_start_lock(START_LOCK_FILE)
 
-    api_port = find_available_port(DEFAULT_API_PORT, "API")
-    web_port = find_available_port(DEFAULT_WEB_PORT, "Web")
-    runtime_env = build_runtime_env(
-        file_env,
-        secret_env,
-        api_port=api_port,
-        web_port=web_port,
-    )
+    try:
+        info("Preparing one-click local startup for the monorepo web app...")
+        ensure_command("npm", "Install Node.js first.")
+        if not Path(sys.executable).exists():
+            fail(f"Python executable was not found: {sys.executable}")
+        if not WEB_DIR.exists():
+            fail(f"Frontend directory does not exist: {WEB_DIR}")
 
-    ensure_python_dependencies(runtime_env)
-    ensure_node_dependencies(runtime_env)
-    ensure_infra(runtime_env)
+        file_env = ensure_env_file()
+        secret_env = load_secret_file(SECRET_FILE)
+        if secret_env.get("AI_API_KEY"):
+            info(f"Loaded AI settings from {SECRET_FILE.name}.")
+        elif SECRET_FILE.exists():
+            warn(f"{SECRET_FILE.name} was found, but no valid AI key was detected.")
 
-    info("Starting API and Next.js development servers...")
-    api_process, api_thread = spawn_process(
-        [
-            sys.executable,
-            "-m",
-            "uvicorn",
-            "app.main:app",
-            "--reload",
-            "--host",
-            "0.0.0.0",
-            "--port",
-            str(api_port),
-        ],
-        cwd=API_DIR,
-        env=runtime_env,
-        name="api",
-    )
-    web_process, web_thread = spawn_process(
-        ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", str(web_port)],
-        cwd=WEB_DIR,
-        env=runtime_env,
-        name="web",
-    )
+        terminate_workspace_dev_processes()
 
-    web_url = f"http://localhost:{web_port}"
-    api_url = f"http://localhost:{api_port}"
-    info(f"Web: {web_url}")
-    info(f"API: {api_url}")
+        api_port = find_available_port(DEFAULT_API_PORT, "API")
+        web_port = find_available_port(DEFAULT_WEB_PORT, "Web")
+        update_start_lock(START_LOCK_FILE, api_port=api_port, web_port=web_port)
+        runtime_env = build_runtime_env(
+            file_env,
+            secret_env,
+            api_port=api_port,
+            web_port=web_port,
+        )
 
-    wait_for_http_ready(f"{api_url}/health", name="API")
-    wait_for_http_ready(web_url, name="Web")
+        ensure_python_dependencies(runtime_env)
+        ensure_node_dependencies(runtime_env)
+        ensure_infra(runtime_env)
+        ensure_mysql_ready(runtime_env)
+        run_database_migrations(runtime_env)
+        verify_auth_tables(runtime_env)
 
-    info("Startup complete. This launcher stays in the foreground to keep both dev servers alive.")
-    info("Next.js usually logs again only after a browser request or file change, so silence here is normal.")
-    info("Press Ctrl+C to stop all child processes started by this launcher.")
+        info("Starting API and Next.js development servers...")
+        api_process, api_thread = spawn_process(
+            [
+                sys.executable,
+                "-m",
+                "uvicorn",
+                "app.main:app",
+                "--reload",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                str(api_port),
+            ],
+            cwd=API_DIR,
+            env=runtime_env,
+            name="api",
+        )
+        web_process, web_thread = spawn_process(
+            ["npm", "run", "dev", "--", "--hostname", "0.0.0.0", "--port", str(web_port)],
+            cwd=WEB_DIR,
+            env=runtime_env,
+            name="web",
+        )
 
-    exit_code = wait_for_processes([("api", api_process), ("web", web_process)])
+        web_url = f"http://localhost:{web_port}"
+        api_url = f"http://localhost:{api_port}"
+        info(f"Web: {web_url}")
+        info(f"API: {api_url}")
 
-    terminate_process(web_process, "Web")
-    terminate_process(api_process, "API")
-    api_thread.join(timeout=2)
-    web_thread.join(timeout=2)
+        wait_for_http_ready(f"{api_url}/health", name="API")
+        wait_for_http_ready(web_url, name="Web")
 
-    if exit_code not in (0, None):
-        raise SystemExit(exit_code)
+        info("Startup complete. This launcher stays in the foreground to keep both dev servers alive.")
+        info("Quick DB checks: SHOW TABLES LIKE 'users'; SELECT id, username, email FROM users ORDER BY id DESC LIMIT 10;")
+        info("Quick session check: SELECT user_id, revoked_at, expires_at FROM user_sessions ORDER BY id DESC LIMIT 10;")
+        info("Next.js usually logs again only after a browser request or file change, so silence here is normal.")
+        info("Press Ctrl+C to stop all child processes started by this launcher.")
+
+        exit_code = wait_for_processes([("api", api_process), ("web", web_process)])
+
+        terminate_process(web_process, "Web")
+        terminate_process(api_process, "API")
+        api_thread.join(timeout=2)
+        web_thread.join(timeout=2)
+
+        if exit_code not in (0, None):
+            raise SystemExit(exit_code)
+    finally:
+        release_start_lock(START_LOCK_FILE)
 
 
 if __name__ == "__main__":
