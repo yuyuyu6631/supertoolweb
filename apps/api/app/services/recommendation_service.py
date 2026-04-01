@@ -35,7 +35,7 @@ def _coerce_cached_items(data: object) -> list[RecommendItem] | None:
     return None
 
 
-def recommend(payload: RecommendRequest) -> list[RecommendItem]:
+def recommend(*, db, payload: RecommendRequest) -> list[RecommendItem]:
     cache_key = build_recommendation_cache_key(
         payload.query, payload.scenario, payload.tags, payload.candidateSlugs
     )
@@ -52,7 +52,7 @@ def recommend(payload: RecommendRequest) -> list[RecommendItem]:
         except Exception:
             pass
 
-    candidates = select_candidates(payload)
+    candidates = select_candidates(db=db, payload=payload)
     ranked = sorted(candidates, key=lambda tool: score_tool(payload.query, tool), reverse=True)
     ai_reasons: dict[str, str] = {}
 

@@ -68,9 +68,9 @@ async function main() {
   await smoothWheel(page, 420, 3, 240);
   await hold(page, 1000);
 
-  console.log("Navigating to draft tools directory");
-  await page.goto(`${baseURL}/tools?status=draft&view=latest`, { waitUntil: "domcontentloaded" });
-  addCue(7600, 11800, "切到草稿数据后，目录会展示完整待审库，而不是只看已发布内容。");
+  console.log("Navigating to latest tools directory");
+  await page.goto(`${baseURL}/tools?status=published&view=latest`, { waitUntil: "domcontentloaded" });
+  addCue(7600, 11800, "切到最新排序后，目录会展示完整工具库，按收录时间倒序排列。");
   await hold(page, 1800);
 
   const searchInput = page.locator('input[name="q"]').first();

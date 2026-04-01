@@ -3,6 +3,14 @@ import { render, screen } from "@testing-library/react";
 import HomePage from "../HomePage";
 import type { PresetView, ToolSummary } from "../../lib/catalog-types";
 
+vi.mock("../../components/Header", () => ({
+  default: () => <div>Header</div>,
+}));
+
+vi.mock("../../components/Footer", () => ({
+  default: () => <div>Footer</div>,
+}));
+
 const featuredTools: ToolSummary[] = [
   {
     id: 1,

@@ -123,18 +123,34 @@ export default function HomePage({
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {featuredTools.map((tool) => (
-                <ToolCard
-                  key={tool.slug}
-                  slug={tool.slug}
-                  name={tool.name}
-                  summary={tool.summary}
-                  tags={tool.tags}
-                  url={tool.officialUrl}
-                  logoPath={tool.logoPath}
-                  status={tool.status}
-                />
-              ))}
+              {featuredTools.map((tool) => {
+                // Detect price type from price field first, then summary and tags
+                const text = `${tool.price} ${tool.name} ${tool.summary} ${tool.tags.join(' ')}`.toLowerCase();
+                let priceLabel: string | null = null;
+                if (text.includes('免费') || text.includes('free')) {
+                  priceLabel = 'free';
+                } else if (text.includes('免费增值') || text.includes('freemium')) {
+                  priceLabel = 'freemium';
+                } else if (text.includes('订阅') || text.includes('月付') || text.includes('yearly') || text.includes('monthly')) {
+                  priceLabel = 'subscription';
+                } else if (text.includes('付费') || text.includes('一次性') || text.includes('lifetime')) {
+                  priceLabel = 'one-time';
+                }
+                return (
+                  <ToolCard
+                    key={tool.slug}
+                    slug={tool.slug}
+                    name={tool.name}
+                    summary={tool.summary}
+                    tags={tool.tags}
+                    url={tool.officialUrl}
+                    logoPath={tool.logoPath}
+                    status={tool.status}
+                    score={tool.score}
+                    priceLabel={priceLabel}
+                  />
+                );
+              })}
             </div>
           </div>
         </section>

@@ -37,10 +37,10 @@ class Tool(Base, TimestampMixin):
     logo_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     logo_status: Mapped[str] = mapped_column(String(32), default="missing")
     logo_source: Mapped[str] = mapped_column(String(32), default="imported")
-    score: Mapped[float] = mapped_column(Float)
-    status: Mapped[str] = mapped_column(String(32), default="published")
-    featured: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_on: Mapped[date] = mapped_column(Date)
+    score: Mapped[float] = mapped_column(Float, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="published", index=True)
+    featured: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_on: Mapped[date] = mapped_column(Date, index=True)
     last_verified_at: Mapped[date] = mapped_column(Date)
 
     tags: Mapped[list["ToolTag"]] = relationship(back_populates="tool", cascade="all, delete-orphan")
@@ -171,3 +171,31 @@ class ToolUpdate(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(32), default="pending_review")
     proposed_payload: Mapped[str] = mapped_column(Text)
     reviewer_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class User(Base, TimestampMixin):
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    agreed_terms_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+
+class UserSession(Base, TimestampMixin):
+    __tablename__ = "user_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    session_token_hash: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="sessions")

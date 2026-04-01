@@ -2,8 +2,8 @@ from app.schemas.recommend import RecommendRequest
 from app.services.catalog_service import list_tools_raw
 
 
-def select_candidates(payload: RecommendRequest):
-    tools = list_tools_raw()
+def select_candidates(*, db, payload: RecommendRequest):
+    tools = list_tools_raw(db=db)
     filtered = tools
 
     if payload.candidateSlugs:

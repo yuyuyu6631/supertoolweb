@@ -18,5 +18,8 @@
     "build:web": "npm run build --workspace @xingdianping/web",
     "lint:web": "npm run lint --workspace @xingdianping/web",
     "test:web": "npm run test --workspace @xingdianping/web"
+  },
+  "dependencies": {
+    "docx": "^9.6.1"
   }
 }

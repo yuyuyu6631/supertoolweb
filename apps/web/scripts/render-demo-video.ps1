@@ -1,5 +1,16 @@
 $ErrorActionPreference = "Stop"
 
+$FfmpegCommand = Get-Command ffmpeg -ErrorAction SilentlyContinue
+if ($FfmpegCommand) {
+  $Ffmpeg = $FfmpegCommand.Source
+} else {
+  $FallbackFfmpeg = "C:\Users\Administrator\AppData\Local\GlobalCLI\ffmpeg.exe"
+  if (-not (Test-Path -LiteralPath $FallbackFfmpeg)) {
+    throw "ffmpeg not found in PATH or fallback location"
+  }
+  $Ffmpeg = $FallbackFfmpeg
+}
+
 $RepoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $OutputRoot = Join-Path $RepoRoot "output/demo"
 $RawVideo = Join-Path $OutputRoot "system-demo-raw.webm"
@@ -70,12 +81,12 @@ Set-Content -LiteralPath $ShiftedSubtitleFile -Value $shiftedLines -Encoding UTF
 
 Push-Location $OutputRoot
 
-ffmpeg -y -hide_banner `
+& $Ffmpeg -y -hide_banner `
   -f lavfi -i color=c=#0f172a:s=1600x900:d=3 `
   -c:v libx264 -pix_fmt yuv420p "intro.mp4"
 Assert-LastExitCode "Generate intro"
 
-ffmpeg -y -hide_banner `
+& $Ffmpeg -y -hide_banner `
   -i "system-demo-raw.webm" `
   -c:v libx264 -preset medium -crf 22 -pix_fmt yuv420p `
   "main.mp4"
@@ -87,7 +98,7 @@ file 'main.mp4'
 "@
 Set-Content -LiteralPath $ConcatFile -Value $concatText -Encoding ASCII
 
-ffmpeg -y -hide_banner `
+& $Ffmpeg -y -hide_banner `
   -f concat -safe 0 -i "concat.txt" `
   -c:v libx264 -preset medium -crf 22 `
   "system-demo-final.mp4"

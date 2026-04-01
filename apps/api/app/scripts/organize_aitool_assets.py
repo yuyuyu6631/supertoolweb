@@ -13,7 +13,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from openpyxl import load_workbook
-from app.services.logo_assets import LOGO_SOURCE_IMPORTED, normalize_logo_path, resolve_logo_status
+from app.services.logo_assets import LOGO_SOURCE_IMPORTED, resolve_logo_status
 
 
 DEFAULT_TARGET_DIR = (
@@ -508,7 +508,7 @@ def build_import_payload(tool_rows: list[dict[str, Any]], logo_dir: Path) -> dic
             tags.setdefault(tag_name, {"name": tag_name})
             tool_tags.append({"tool_slug": slug, "tag_name": tag_name})
 
-        logo_path = normalize_logo_path(derive_logo_path(row, logo_lookup, logo_entries, logo_dir))
+        logo_path = derive_logo_path(row, logo_lookup, logo_entries, logo_dir)
         description = row["subtitle"] or row["remark"] or row["name"]
         editor_comment_parts = [
             row["developer"] and f"Developer: {row['developer']}",

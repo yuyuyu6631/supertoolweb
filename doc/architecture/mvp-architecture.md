@@ -1,18 +1,21 @@
 # 星点评 MVP 架构说明
 
+> 本文档描述的是当前 MVP 基线，不再把历史 Demo 架构写成现状。
+
 ## 目录结构
 
-- `apps/web`: Next.js 前端，承接首页、榜单、详情、分类和场景页
-- `apps/api`: FastAPI 后端，承接目录数据、推荐接口和抓取任务入口
-- `packages/contracts`: 前后端共享类型和种子数据
-- `infra/docker`: 本地联调用 Docker Compose
-- `infra/sql`: MySQL 初始化脚本
+- `apps/web`：Next.js 前端，承接首页、工具目录、榜单、场景和认证页
+- `apps/api`：FastAPI 后端，承接目录数据、推荐、抓取与认证接口
+- `packages/contracts`：共享类型与样例数据
+- `infra/docker`：本地联调与容器化配置
+- `infra/sql`：数据库初始化脚本
 
 ## 数据层
 
-MVP 使用 `MySQL + SQLAlchemy 2 + Alembic`。
+当前使用 `MySQL + SQLAlchemy 2 + Alembic`。
 
 核心表：
+
 - `tools`
 - `categories`
 - `tool_categories`
@@ -26,23 +29,25 @@ MVP 使用 `MySQL + SQLAlchemy 2 + Alembic`。
 - `crawl_jobs`
 - `crawl_snapshots`
 - `tool_updates`
+- `users`
+- `user_sessions`
 
-## 缓存与推荐
+## 推荐与抓取
 
-- Redis 缓存热门推荐榜单和 `POST /api/recommend` 的响应
-- 推荐链路先用规则召回与简单排序，未来可替换为真实 AI 排序器
-- 缓存 TTL 默认为 30 分钟
+- 推荐接口为 `POST /api/recommend`
+- 抓取入口为 `POST /api/crawl/jobs`
+- 应用生命周期中已接入定时抓取任务骨架
+- 抓取与审核发布仍未形成完整闭环
 
-## 部署建议
+## 认证
 
-- Web：Vercel 或 Netlify
-- API：ECS / EC2 上以 `gunicorn + uvicorn workers` 运行
-- MySQL：RDS
-- Redis：云缓存服务
+- 已落地基础账号认证
+- 使用服务端会话与 HttpOnly Cookie
+- 当前接口包括注册、登录、登出和读取当前用户
 
 ## 本地启动
 
-1. 根目录复制 `.env.example` 为 `.env`
-2. `docker compose -f infra/docker/docker-compose.yml up --build`
+1. 根目录准备 `.env`
+2. 执行 `python start.py` 或 `npm run dev`
 3. Web 默认使用 `http://localhost:3000`
 4. API 默认使用 `http://localhost:8000`

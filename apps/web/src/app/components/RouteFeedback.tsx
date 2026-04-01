@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 export default function RouteFeedback() {
   const pathname = usePathname();
-  const previousPath = useRef(pathname);
+  const searchParams = useSearchParams();
+  const routeKey = `${pathname}?${searchParams.toString()}`;
+  const previousPath = useRef(routeKey);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
-    if (previousPath.current !== pathname) {
-      previousPath.current = pathname;
+    if (previousPath.current !== routeKey) {
+      previousPath.current = routeKey;
       setIsTransitioning(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
 
@@ -20,12 +22,7 @@ export default function RouteFeedback() {
 
       return () => window.clearTimeout(timer);
     }
-  }, [pathname]);
+  }, [routeKey]);
 
-  return (
-    <div
-      aria-hidden="true"
-      className={`route-feedback ${isTransitioning ? "is-active" : ""}`}
-    />
-  );
+  return <div aria-hidden="true" className={`route-feedback ${isTransitioning ? "is-active" : ""}`} />;
 }

@@ -1,0 +1,389 @@
+import os
+from datetime import date
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+os.environ["DATABASE_URL"] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'test_catalog_cases.db')}"
+
+import app.services.catalog_service as catalog_svc  # noqa: E402
+from app.db.session import Base, get_db  # noqa: E402
+from app.main import app  # noqa: E402
+from app.models.models import (  # noqa: E402
+    Category,
+    Ranking,
+    RankingItem,
+    Scenario,
+    ScenarioTool,
+    Tag,
+    Tool,
+    ToolTag,
+)
+
+_TEST_DB_PATH = os.path.join(os.path.dirname(__file__), "test_catalog_cases.db")
+_test_engine = create_engine(
+    f"sqlite:///{_TEST_DB_PATH}",
+    connect_args={"check_same_thread": False},
+)
+_TestSession = sessionmaker(bind=_test_engine, autoflush=False, autocommit=False, class_=Session)
+
+
+def _add_tool(
+    db: Session,
+    *,
+    slug: str,
+    name: str,
+    category_name: str,
+    summary: str,
+    score: float,
+    created_on: date,
+    tags: list[str],
+    status: str = "published",
+    featured: bool = False,
+) -> Tool:
+    tool = Tool(
+        slug=slug,
+        name=name,
+        category_name=category_name,
+        summary=summary,
+        description=f"{name} description",
+        editor_comment="",
+        official_url=f"https://example.com/{slug}",
+        logo_path=None,
+        logo_status="missing",
+        logo_source="imported",
+        score=score,
+        status=status,
+        featured=featured,
+        created_on=created_on,
+        last_verified_at=created_on,
+    )
+    db.add(tool)
+    db.flush()
+
+    for tag_name in tags:
+        tag = db.query(Tag).filter(Tag.name == tag_name).first()
+        if not tag:
+            tag = Tag(name=tag_name)
+            db.add(tag)
+            db.flush()
+        db.add(ToolTag(tool_id=tool.id, tag_id=tag.id))
+
+    return tool
+
+
+def setup_module():
+    Base.metadata.create_all(bind=_test_engine)
+    catalog_svc.SessionLocal = _TestSession
+
+    db = _TestSession()
+    try:
+        db.add_all(
+            [
+                Category(slug="chatbot", name="Chatbot", description="Conversational AI"),
+                Category(slug="office", name="Office", description="Office productivity"),
+                Category(slug="empty", name="Empty", description="No published tools"),
+            ]
+        )
+        db.flush()
+
+        tools = [
+            _add_tool(
+                db,
+                slug="chatgpt",
+                name="ChatGPT",
+                category_name="Chatbot",
+                summary="featured chatbot for enterprise teams",
+                score=9.8,
+                created_on=date(2026, 3, 10),
+                tags=["free", "assistant"],
+                featured=True,
+            ),
+            _add_tool(
+                db,
+                slug="claude",
+                name="Claude",
+                category_name="Chatbot",
+                summary="analysis assistant",
+                score=9.3,
+                created_on=date(2026, 3, 9),
+                tags=["assistant"],
+                featured=True,
+            ),
+            _add_tool(
+                db,
+                slug="gamma",
+                name="Gamma",
+                category_name="Office",
+                summary="presentation builder",
+                score=8.7,
+                created_on=date(2026, 3, 8),
+                tags=["slides"],
+            ),
+            _add_tool(
+                db,
+                slug="notion-ai",
+                name="Notion AI",
+                category_name="Office",
+                summary="workspace writing tool",
+                score=8.1,
+                created_on=date(2026, 3, 7),
+                tags=["writing"],
+            ),
+            _add_tool(
+                db,
+                slug="free-writer",
+                name="Free Writer",
+                category_name="Office",
+                summary="free writing helper",
+                score=7.5,
+                created_on=date(2026, 3, 6),
+                tags=["free", "writing"],
+            ),
+            _add_tool(
+                db,
+                slug="office-bot",
+                name="Office Bot",
+                category_name="Office",
+                summary="office automation assistant",
+                score=7.1,
+                created_on=date(2026, 3, 5),
+                tags=["assistant"],
+            ),
+            _add_tool(
+                db,
+                slug="image-magic",
+                name="Image Magic",
+                category_name="Office",
+                summary="image helper",
+                score=6.8,
+                created_on=date(2026, 3, 4),
+                tags=["image"],
+            ),
+            _add_tool(
+                db,
+                slug="agent-hub",
+                name="Agent Hub",
+                category_name="Office",
+                summary="agent workspace",
+                score=6.1,
+                created_on=date(2026, 3, 3),
+                tags=["agent"],
+            ),
+            _add_tool(
+                db,
+                slug="meeting-note",
+                name="Meeting Note",
+                category_name="Office",
+                summary="meeting notes",
+                score=5.9,
+                created_on=date(2026, 3, 2),
+                tags=["writing"],
+            ),
+            _add_tool(
+                db,
+                slug="zeta-flow",
+                name="Zeta Flow",
+                category_name="Office",
+                summary="workflow builder",
+                score=5.7,
+                created_on=date(2026, 3, 1),
+                tags=["workflow"],
+            ),
+            _add_tool(
+                db,
+                slug="draft-tool",
+                name="Draft Tool",
+                category_name="Chatbot",
+                summary="draft chatbot",
+                score=3.0,
+                created_on=date(2026, 2, 28),
+                tags=["assistant"],
+                status="draft",
+            ),
+            _add_tool(
+                db,
+                slug="archived-tool",
+                name="Archived Tool",
+                category_name="Office",
+                summary="archived office tool",
+                score=2.0,
+                created_on=date(2026, 2, 27),
+                tags=["legacy"],
+                status="archived",
+            ),
+        ]
+
+        top100 = Ranking(slug="top100", title="Top 100", description="Main ranking")
+        empty_ranking = Ranking(slug="empty-ranking", title="Empty Ranking", description="No published items")
+        db.add_all([top100, empty_ranking])
+        db.flush()
+        db.add_all(
+            [
+                RankingItem(ranking_id=top100.id, tool_id=tools[0].id, rank_order=1, reason="best"),
+                RankingItem(ranking_id=top100.id, tool_id=tools[10].id, rank_order=2, reason="draft"),
+                RankingItem(ranking_id=top100.id, tool_id=tools[2].id, rank_order=3, reason="strong"),
+                RankingItem(ranking_id=empty_ranking.id, tool_id=tools[10].id, rank_order=1, reason="draft"),
+            ]
+        )
+
+        writing = Scenario(
+            slug="writing",
+            title="Writing",
+            description="Writing tasks",
+            problem="Need drafting help",
+            tool_count=0,
+        )
+        empty_scenario = Scenario(
+            slug="empty-scenario",
+            title="Empty Scenario",
+            description="No published tools",
+            problem="No usable tools",
+            tool_count=0,
+        )
+        db.add_all([writing, empty_scenario])
+        db.flush()
+        db.add_all(
+            [
+                ScenarioTool(scenario_id=writing.id, tool_id=tools[0].id, is_primary=True),
+                ScenarioTool(scenario_id=writing.id, tool_id=tools[2].id, is_primary=False),
+                ScenarioTool(scenario_id=writing.id, tool_id=tools[10].id, is_primary=False),
+                ScenarioTool(scenario_id=empty_scenario.id, tool_id=tools[10].id, is_primary=True),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
+def teardown_module():
+    Base.metadata.drop_all(bind=_test_engine)
+    try:
+        if os.path.exists(_TEST_DB_PATH):
+            os.remove(_TEST_DB_PATH)
+    except PermissionError:
+        pass
+
+
+def _override_get_db():
+    db = _TestSession()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+app.dependency_overrides[get_db] = _override_get_db
+client = TestClient(app)
+
+
+def test_tools_directory_default_response_shape_and_visibility():
+    response = client.get("/api/tools")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert set(payload) == {
+        "items",
+        "total",
+        "page",
+        "pageSize",
+        "hasMore",
+        "categories",
+        "tags",
+        "statuses",
+        "presets",
+    }
+    assert payload["page"] == 1
+    assert payload["pageSize"] == 9
+    assert payload["total"] == 10
+    assert len(payload["items"]) == 9
+    assert payload["hasMore"] is True
+    assert {item["slug"] for item in payload["items"]}.isdisjoint({"draft-tool", "archived-tool"})
+
+
+def test_tools_directory_page_two_returns_only_second_page_slice():
+    response = client.get("/api/tools?page=2&page_size=9")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["page"] == 2
+    assert payload["total"] == 10
+    assert payload["hasMore"] is False
+    assert [item["slug"] for item in payload["items"]] == ["zeta-flow"]
+
+
+def test_tools_directory_supports_combined_filters_and_facets():
+    response = client.get("/api/tools?q=ChatGPT&category=chatbot&tag=free")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [item["slug"] for item in payload["items"]] == ["chatgpt"]
+    assert payload["categories"][0] == {"slug": "chatbot", "label": "Chatbot", "count": 1}
+    assert payload["tags"][0] == {"slug": "assistant", "label": "assistant", "count": 1}
+    statuses = {item["slug"]: item["count"] for item in payload["statuses"]}
+    assert statuses == {"all": 1, "published": 1}
+
+
+def test_tools_directory_status_all_includes_non_published_rows():
+    response = client.get("/api/tools?status=all&page_size=24")
+
+    assert response.status_code == 200
+    payload = response.json()
+    slugs = {item["slug"] for item in payload["items"]}
+    assert "draft-tool" in slugs
+    assert "archived-tool" in slugs
+    statuses = {item["slug"]: item["count"] for item in payload["statuses"]}
+    assert statuses == {"all": 12, "published": 10, "draft": 1, "archived": 1}
+
+
+def test_tools_directory_latest_and_name_sorting():
+    latest_response = client.get("/api/tools?view=latest&page_size=3")
+    name_response = client.get("/api/tools?sort=name&page_size=3")
+
+    assert latest_response.status_code == 200
+    assert [item["slug"] for item in latest_response.json()["items"]] == ["chatgpt", "claude", "gamma"]
+    assert name_response.status_code == 200
+    assert [item["slug"] for item in name_response.json()["items"]] == ["agent-hub", "chatgpt", "claude"]
+
+
+def test_category_tools_only_return_published_tools():
+    response = client.get("/api/categories/chatbot/tools")
+
+    assert response.status_code == 200
+    assert [item["slug"] for item in response.json()] == ["chatgpt", "claude"]
+
+
+def test_rankings_hide_empty_rankings_and_unpublished_items():
+    list_response = client.get("/api/rankings")
+    detail_response = client.get("/api/rankings/top100")
+    empty_response = client.get("/api/rankings/empty-ranking")
+
+    assert list_response.status_code == 200
+    assert [item["slug"] for item in list_response.json()] == ["top100"]
+    assert detail_response.status_code == 200
+    assert [item["tool"]["slug"] for item in detail_response.json()["items"]] == ["chatgpt", "gamma"]
+    assert empty_response.status_code == 404
+
+
+def test_scenarios_hide_empty_scenarios_and_unpublished_items():
+    list_response = client.get("/api/scenarios")
+    detail_response = client.get("/api/scenarios/writing")
+    empty_response = client.get("/api/scenarios/empty-scenario")
+
+    assert list_response.status_code == 200
+    assert [item["slug"] for item in list_response.json()] == ["writing"]
+    assert detail_response.status_code == 200
+    payload = detail_response.json()
+    assert payload["toolCount"] == 2
+    assert payload["primaryTools"] == ["chatgpt"]
+    assert payload["alternativeTools"] == ["gamma"]
+    assert empty_response.status_code == 404
+
+
+def test_tool_detail_missing_slug_returns_404():
+    response = client.get("/api/tools/not-exists")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Tool not found"

@@ -19,6 +19,7 @@ class ToolSummary(BaseModel):
     status: str
     featured: bool
     createdAt: date
+    price: str = ""
 
 
 class ToolDetail(ToolSummary):

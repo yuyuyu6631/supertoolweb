@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     database_url: str = "sqlite+pysqlite:///:memory:"
     redis_url: str = "redis://localhost:6379/0"
+    auth_secret_key: str = "dev-auth-secret-key"
+    session_cookie_name: str = "xingdianping_session"
+    session_ttl_seconds: int = 604800
+    cookie_secure: bool = False
     ai_provider: str = "stub"
     ai_api_key: str = ""
     ai_model: str = ""

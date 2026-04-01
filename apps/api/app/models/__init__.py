@@ -12,6 +12,8 @@ from app.models.models import (
     ToolCategory,
     ToolTag,
     ToolUpdate,
+    User,
+    UserSession,
 )
 
 __all__ = [
@@ -28,4 +30,6 @@ __all__ = [
     "ToolCategory",
     "ToolTag",
     "ToolUpdate",
+    "User",
+    "UserSession",
 ]

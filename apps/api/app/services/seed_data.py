@@ -1,6 +1,43 @@
 from app.schemas.catalog import CategorySummary, ScenarioSummary
-from app.schemas.tool import ToolDetail
+from app.schemas.tool import ToolDetail, ToolSummary
 
+# Create minimal ToolSummary objects for seed data
+def build_minimal_tool_summary(slug: str) -> ToolSummary:
+    # Find the full tool detail
+    for tool in TOOLS:
+        if tool.slug == slug:
+            return ToolSummary(
+                id=tool.id,
+                slug=tool.slug,
+                name=tool.name,
+                category=tool.category,
+                score=tool.score,
+                summary=tool.summary,
+                tags=tool.tags,
+                officialUrl=tool.officialUrl,
+                logoPath=tool.logoPath,
+                logoStatus=tool.logoStatus,
+                logoSource=tool.logoSource,
+                status=tool.status,
+                featured=tool.featured,
+                createdAt=tool.createdAt,
+                price=getattr(tool, 'price', ''),
+            )
+    # Fallback if not found
+    return ToolSummary(
+        id=0,
+        slug=slug,
+        name=slug,
+        category="",
+        score=0.0,
+        summary="",
+        tags=[],
+        officialUrl="",
+        status="published",
+        featured=False,
+        createdAt="2026-01-01",
+        price="",
+    )
 
 CATEGORIES: list[CategorySummary] = [
     CategorySummary(slug="general-assistants", name="通用助手", description="覆盖问答、搜索、总结与多任务处理。"),
@@ -35,6 +72,7 @@ TOOLS: list[ToolDetail] = [
         alternatives=["claude", "gemini"],
         status="published",
         lastVerifiedAt="2026-03-20",
+        price="免费增值",
     ),
     ToolDetail(
         id=2,
@@ -60,6 +98,7 @@ TOOLS: list[ToolDetail] = [
         alternatives=["chatgpt", "gemini"],
         status="published",
         lastVerifiedAt="2026-03-20",
+        price="订阅",
     ),
     ToolDetail(
         id=3,
@@ -85,30 +124,41 @@ TOOLS: list[ToolDetail] = [
         alternatives=["canva-ai"],
         status="published",
         lastVerifiedAt="2026-03-18",
+        price="免费增值",
     ),
 ]
 
 SCENARIOS: list[ScenarioSummary] = [
     ScenarioSummary(
         id=1,
-        slug="ppt",
+        slug="zuanyan-ptt",
         title="做 PPT 用什么 AI",
         description="优先看能快速产出完整演示稿的工具，避免从空白页开始。",
         problem="汇报和提案常常时间紧，需要在很短时间内拿出结构完整、视觉可用的演示稿。",
         toolCount=3,
-        primaryTools=["gamma", "chatgpt"],
-        alternativeTools=["canva-ai"],
+        primaryTools=[
+            build_minimal_tool_summary("gamma"),
+            build_minimal_tool_summary("chatgpt"),
+        ],
+        alternativeTools=[
+            build_minimal_tool_summary("canva-ai"),
+        ],
         targetAudience=["销售", "产品经理", "创业者"],
     ),
     ScenarioSummary(
         id=2,
-        slug="writing",
+        slug="xie-wen-jian",
         title="写文章和邮件用什么 AI",
         description="适合先出结构、再润色成稿的内容工作流。",
         problem="很多内容岗位不是没有想法，而是难在稳定、持续、高质量地输出。",
         toolCount=3,
-        primaryTools=["chatgpt", "claude"],
-        alternativeTools=["gamma"],
+        primaryTools=[
+            build_minimal_tool_summary("chatgpt"),
+            build_minimal_tool_summary("claude"),
+        ],
+        alternativeTools=[
+            build_minimal_tool_summary("gamma"),
+        ],
         targetAudience=["运营", "内容团队", "咨询顾问"],
     ),
 ]
