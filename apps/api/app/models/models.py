@@ -201,12 +201,6 @@ class User(Base, TimestampMixin):
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    match_profile: Mapped["UserMatchProfile | None"] = relationship(
-        back_populates="user",
-        cascade="all, delete-orphan",
-        uselist=False,
-    )
-    tool_usages: Mapped[list["UserToolUsage"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSession(Base, TimestampMixin):
@@ -221,27 +215,3 @@ class UserSession(Base, TimestampMixin):
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="sessions")
-
-
-class UserMatchProfile(Base, TimestampMixin):
-    __tablename__ = "user_match_profiles"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
-    bio: Mapped[str] = mapped_column(String(512), default="")
-    is_matchmaking_enabled: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-
-    user: Mapped["User"] = relationship(back_populates="match_profile")
-
-
-class UserToolUsage(Base, TimestampMixin):
-    __tablename__ = "user_tool_usages"
-    __table_args__ = (UniqueConstraint("user_id", "tool_id", name="uq_user_tool_usage"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    tool_id: Mapped[int] = mapped_column(ForeignKey("tools.id", ondelete="CASCADE"), index=True)
-    source: Mapped[str] = mapped_column(String(32), default="manual")
-
-    user: Mapped["User"] = relationship(back_populates="tool_usages")
-    tool: Mapped["Tool"] = relationship()

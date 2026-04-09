@@ -84,33 +84,3 @@ export interface RankingSection {
   description: string;
   items: RankingItem[];
 }
-
-export interface MatchProfileTool {
-  id: number;
-  slug: string;
-  name: string;
-}
-
-export interface MatchProfile {
-  userId: number;
-  username: string;
-  bio: string;
-  isMatchmakingEnabled: boolean;
-  tools: MatchProfileTool[];
-}
-
-export interface MatchCandidateToolPair {
-  myTool: string;
-  candidateTool: string;
-  similarity: number;
-}
-
-export interface MatchCandidate {
-  userId: number;
-  username: string;
-  bio: string;
-  matchScore: number;
-  sharedTools: string[];
-  similarToolPairs: MatchCandidateToolPair[];
-  reason: string;
-}

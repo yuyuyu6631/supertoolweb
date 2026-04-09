@@ -49,9 +49,6 @@ export default function HeaderAuthControls({ authHref }: HeaderAuthControlsProps
         <UserRound className="h-4 w-4" />
         {currentUser.username}
       </Link>
-      <Link href="/matches" className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-white">
-        找搭子
-      </Link>
       <button
         type="button"
         onClick={() => void handleLogout()}
