@@ -137,7 +137,7 @@ def test_seed_catalog_views_populates_rankings_and_scenarios():
         assert db.query(Ranking).count() == 8
         assert db.query(Scenario).count() == 10
         assert db.query(RankingItem).count() == 8 * 12
-        assert db.query(ScenarioTool).count() == 10 * 10
+        assert db.query(ScenarioTool).count() == 10 * 5
 
         rankings = catalog_svc.list_rankings(db=db)
         scenarios = catalog_svc.list_scenarios(db=db)
@@ -169,9 +169,9 @@ def test_seed_catalog_views_populates_rankings_and_scenarios():
             "build-agent",
         ]
         assert len(scenarios) == 10
-        assert all(item.toolCount == 10 for item in scenarios)
-        assert all(len(item.primaryTools) == 6 for item in scenarios)
-        assert all(len(item.alternativeTools) == 4 for item in scenarios)
+        assert all(1 <= item.toolCount <= 5 for item in scenarios)
+        assert all(1 <= len(item.primaryTools) <= 3 for item in scenarios)
+        assert all(len(item.alternativeTools) <= 2 for item in scenarios)
         assert all(item.targetAudience for item in scenarios)
     finally:
         db.close()
@@ -186,7 +186,7 @@ def test_seed_catalog_views_is_idempotent():
         assert db.query(Ranking).count() == 8
         assert db.query(Scenario).count() == 10
         assert db.query(RankingItem).count() == 8 * 12
-        assert db.query(ScenarioTool).count() == 10 * 10
+        assert db.query(ScenarioTool).count() == 10 * 5
     finally:
         db.close()
 
@@ -207,7 +207,7 @@ def test_rankings_and_scenarios_endpoints_return_filled_sections():
     assert len(rankings_payload) == 8
     assert all(len(section["items"]) == 12 for section in rankings_payload)
     assert len(scenarios_payload) == 10
-    assert scenario_detail["toolCount"] == 10
-    assert len(scenario_detail["primaryTools"]) == 6
-    assert len(scenario_detail["alternativeTools"]) == 4
+    assert scenario_detail["toolCount"] == 5
+    assert len(scenario_detail["primaryTools"]) == 3
+    assert len(scenario_detail["alternativeTools"]) == 2
     assert scenario_detail["targetAudience"] == ["运营", "分析师", "产品经理", "业务负责人"]

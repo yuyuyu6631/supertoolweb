@@ -299,7 +299,7 @@ class TestB4_异常处理:
 
         from app import main as main_module
 
-        monkeypatch.setattr(main_module, "SessionLocal", lambda: BrokenSession())
+        monkeypatch.setattr(main_module.session_module, "SessionLocal", lambda: BrokenSession())
         resp = client.get("/health/ready")
         assert resp.status_code == 503
         payload = resp.json()

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.tool import ToolSummary
 
@@ -31,7 +31,10 @@ class ToolsDirectoryResponse(BaseModel):
     categories: list[FacetOption]
     tags: list[FacetOption]
     statuses: list[FacetOption]
-    presets: list[PresetView]
+    priceFacets: list[FacetOption] = Field(default_factory=list)
+    accessFacets: list[FacetOption] = Field(default_factory=list)
+    priceRangeFacets: list[FacetOption] = Field(default_factory=list)
+    presets: list[PresetView] = Field(default_factory=list)
 
 
 class ScenarioSummary(BaseModel):

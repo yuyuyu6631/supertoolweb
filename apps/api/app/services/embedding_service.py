@@ -201,3 +201,45 @@ def recall_tool_ids_by_embedding(*, db, query: str, candidate_tool_ids: list[int
 
     scored.sort(key=lambda item: item[1], reverse=True)
     return [tool_id for tool_id, _ in scored[: settings.embedding_recall_top_k]]
+
+
+def backfill_embedding_for_tool(db, tool_id: int) -> bool:
+    """
+    根据给定的 tool_id 获取对应数据，并调用 embed_text 重构并刷新其向量字段。
+    可配合 FastAPI 的 BackgroundTasks 进行异步调用。
+    """
+    tool = db.scalars(select(Tool).where(Tool.id == tool_id)).first()
+    if not tool:
+        return False
+
+    source_text = build_tool_embedding_source(tool)
+    content_hash = compute_content_hash(source_text)
+
+    existing = db.scalars(select(ToolEmbedding).where(ToolEmbedding.tool_id == tool_id)).first()
+    if existing and existing.content_hash == content_hash:
+        return True  # 没有更新源文本情况下的命中，免去重新求值
+
+    try:
+        result = embed_text(source_text)
+        embedding_json = serialize_embedding(result.vector)
+
+        if existing:
+            existing.embedding_json = embedding_json
+            existing.content_hash = content_hash
+            existing.provider = result.provider
+            existing.model = result.model
+        else:
+            new_emb = ToolEmbedding(
+                tool_id=tool_id,
+                embedding_json=embedding_json,
+                content_hash=content_hash,
+                provider=result.provider,
+                model=result.model,
+            )
+            db.add(new_emb)
+        db.commit()
+        return True
+    except Exception as e:
+        print(f"[EMBEDDING_SERVICE] 回填后台向量时失败 tool_id={tool_id}: {e}")
+        db.rollback()
+        return False

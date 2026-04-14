@@ -34,7 +34,9 @@
 
 ## 推荐与抓取
 
-- 推荐接口为 `POST /api/recommend`
+- AI 搜索接口为 `GET /api/ai-search`，AI 意图解析 + 工具筛选，返回含 AI Panel 的结构化结果
+- 推荐接口为 `POST /api/recommend`，批量返回推荐工具（与 ai-search 是两个独立系统）
+- Chat 接口为 `POST /api/chat`，SSE 流式对话，基于 RAG
 - 抓取入口为 `POST /api/crawl/jobs`
 - 应用生命周期中已接入定时抓取任务骨架
 - 抓取与审核发布仍未形成完整闭环

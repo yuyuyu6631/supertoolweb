@@ -2,22 +2,12 @@ import { notFound } from "next/navigation";
 import Header from "@/src/app/components/Header";
 import Footer from "@/src/app/components/Footer";
 import Breadcrumbs from "@/src/app/components/Breadcrumbs";
-import ToolCard from "@/src/app/components/ToolCard";
+import CompareToolsGrid from "@/src/app/components/CompareToolsGrid";
 import { fetchScenarioDetail } from "@/src/app/lib/catalog-api";
-import type { ToolSummary } from "@/src/app/lib/catalog-types";
-import { buildDecisionBadges } from "@/src/app/lib/catalog-utils";
+import type { CompareToolsSection } from "@/src/app/components/CompareToolsGrid";
 
 interface ScenarioRouteProps {
   params: Promise<{ slug: string }>;
-}
-
-function detectPriceLabel(tool: ToolSummary) {
-  const text = `${tool.price} ${tool.name} ${tool.summary} ${tool.tags.join(" ")}`.toLowerCase();
-  if (text.includes("免费") || text.includes("free")) return "free";
-  if (text.includes("免费增值") || text.includes("freemium")) return "freemium";
-  if (text.includes("订阅") || text.includes("月付") || text.includes("yearly") || text.includes("monthly")) return "subscription";
-  if (text.includes("付费") || text.includes("一次性") || text.includes("lifetime")) return "one-time";
-  return null;
 }
 
 export default async function Page({ params }: ScenarioRouteProps) {
@@ -28,31 +18,22 @@ export default async function Page({ params }: ScenarioRouteProps) {
     notFound();
   }
 
-  const renderToolsGrid = (tools: ToolSummary[], title: string) => (
-    <div className="panel-base rounded-[28px] p-5">
-      <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-      {tools.length > 0 ? (
-        <div className="mt-4 grid gap-4 md:grid-cols-1 xl:grid-cols-1">
-          {tools.map((tool) => (
-            <ToolCard
-              key={tool.slug}
-              slug={tool.slug}
-              name={tool.name}
-              summary={tool.summary}
-              tags={tool.tags}
-              url={tool.officialUrl}
-              logoPath={tool.logoPath}
-              score={tool.score}
-              priceLabel={detectPriceLabel(tool)}
-              decisionBadges={buildDecisionBadges({ price: tool.price, summary: tool.summary, tags: tool.tags })}
-            />
-          ))}
-        </div>
-      ) : (
-        <p className="mt-4 text-sm text-slate-500">暂无可展示工具。</p>
-      )}
-    </div>
-  );
+  const compareSections: CompareToolsSection[] = [
+    {
+      id: "primary-tools",
+      title: "优先推荐工具",
+      items: scenario.primaryTools,
+      emptyTitle: "主推工具还在补充中",
+      emptyDescription: "你可以先去最热榜单看看，或者提交你正在用的工具，帮助我们把这个场景补完整。",
+    },
+    {
+      id: "alternative-tools",
+      title: "备选工具",
+      items: scenario.alternativeTools,
+      emptyTitle: "备选工具还没收齐",
+      emptyDescription: "先看主推工具也没问题。如果你有更顺手的替代品，欢迎直接提交给我们。",
+    },
+  ];
 
   return (
     <div className="page-shell">
@@ -89,9 +70,9 @@ export default async function Page({ params }: ScenarioRouteProps) {
             </div>
           </section>
 
-          {scenario.primaryTools.length > 0 ? <section className="mt-6">{renderToolsGrid(scenario.primaryTools, "优先推荐工具")}</section> : null}
-
-          {scenario.alternativeTools.length > 0 ? <section className="mt-6">{renderToolsGrid(scenario.alternativeTools, "备选工具")}</section> : null}
+          <section className="mt-6">
+            <CompareToolsGrid sections={compareSections} />
+          </section>
         </div>
       </main>
 

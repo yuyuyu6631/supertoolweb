@@ -43,7 +43,7 @@ export default function HeaderMobileMenu({ currentPath, authHref }: HeaderMobile
       </button>
 
       {open ? (
-        <div className="border-t border-white/25 bg-white/85 md:hidden">
+        <div className="absolute inset-x-0 top-full border-t border-white/25 bg-white/85 shadow-lg md:hidden">
           <div className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-4 sm:px-6">
             {headerNavItems.map((item) => (
               <Link

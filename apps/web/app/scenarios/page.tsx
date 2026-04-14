@@ -3,6 +3,7 @@ import Header from "@/src/app/components/Header";
 import Footer from "@/src/app/components/Footer";
 import Breadcrumbs from "@/src/app/components/Breadcrumbs";
 import { fetchScenarios } from "@/src/app/lib/catalog-api";
+import { TOOL_SUBMISSION_URL } from "@/src/app/lib/catalog-utils";
 
 export default async function Page() {
   const scenarios = await fetchScenarios().catch(() => []);
@@ -25,8 +26,23 @@ export default async function Page() {
 
           {scenarios.length === 0 ? (
             <section className="panel-base mt-6 rounded-[28px] p-8 text-center">
-              <h2 className="text-xl font-semibold text-slate-900">暂无可展示场景</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-600">当前没有可用场景数据，稍后再试。</p>
+              <h2 className="text-xl font-semibold text-slate-900">场景页正在补充中</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                该分类工具正在快马加鞭收录中，你可以先去最热榜单看看，或者把你常用的工具提交给我们。
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-3">
+                <Link href="/tools?view=hot" className="btn-primary rounded-full px-5 py-3 text-sm">
+                  去最热榜单
+                </Link>
+                <a
+                  href={TOOL_SUBMISSION_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary rounded-full px-5 py-3 text-sm"
+                >
+                  提交你喜欢的工具
+                </a>
+              </div>
             </section>
           ) : (
             <section className="mt-6 grid gap-4 md:grid-cols-2">

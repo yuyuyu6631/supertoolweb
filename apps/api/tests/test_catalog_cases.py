@@ -20,6 +20,7 @@ from app.models.models import (  # noqa: E402
     Tag,
     Tool,
     ToolEmbedding,
+    ToolReview,
     ToolTag,
 )
 from app.services.embedding_service import build_tool_embedding_source, compute_content_hash, embed_text, serialize_embedding  # noqa: E402
@@ -48,6 +49,12 @@ def _add_tool(
     description: str | None = None,
     status: str = "published",
     featured: bool = False,
+    review_count: int = 0,
+    access_flags: dict[str, bool | None] | None = None,
+    pricing_type: str = "unknown",
+    price_min_cny: int | None = None,
+    price_max_cny: int | None = None,
+    free_allowance_text: str = "",
 ) -> Tool:
     tool = Tool(
         slug=slug,
@@ -61,8 +68,14 @@ def _add_tool(
         logo_status="missing",
         logo_source="imported",
         score=score,
+        review_count=review_count,
         status=status,
         featured=featured,
+        access_flags=access_flags,
+        pricing_type=pricing_type,
+        price_min_cny=price_min_cny,
+        price_max_cny=price_max_cny,
+        free_allowance_text=free_allowance_text,
         created_on=created_on,
         last_verified_at=created_on,
     )
@@ -132,8 +145,14 @@ def setup_module():
                 summary="featured chatbot for enterprise teams",
                 score=9.8,
                 created_on=date(2026, 3, 10),
-                tags=["free", "assistant"],
+                tags=["assistant", "workspace"],
                 featured=True,
+                review_count=8,
+                access_flags={"needs_vpn": False, "cn_lang": True, "cn_payment": True},
+                pricing_type="subscription",
+                price_min_cny=145,
+                price_max_cny=145,
+                free_allowance_text="基础问答可免费体验，进阶能力需订阅。",
             ),
             _add_tool(
                 db,
@@ -145,6 +164,10 @@ def setup_module():
                 created_on=date(2026, 3, 9),
                 tags=["assistant"],
                 featured=True,
+                access_flags={"needs_vpn": True, "cn_lang": False, "cn_payment": False},
+                pricing_type="subscription",
+                price_min_cny=145,
+                price_max_cny=145,
             ),
             _add_tool(
                 db,
@@ -156,6 +179,12 @@ def setup_module():
                 score=8.7,
                 created_on=date(2026, 3, 8),
                 tags=["slides"],
+                review_count=6,
+                access_flags={"needs_vpn": False, "cn_lang": True, "cn_payment": True},
+                pricing_type="freemium",
+                price_min_cny=39,
+                price_max_cny=79,
+                free_allowance_text="免费版可生成 10 份文稿",
             ),
             _add_tool(
                 db,
@@ -167,6 +196,10 @@ def setup_module():
                 score=8.4,
                 created_on=date(2026, 3, 7),
                 tags=["analytics", "report"],
+                access_flags={"needs_vpn": False, "cn_lang": True, "cn_payment": True},
+                pricing_type="subscription",
+                price_min_cny=199,
+                price_max_cny=199,
             ),
             _add_tool(
                 db,
@@ -177,6 +210,10 @@ def setup_module():
                 score=8.1,
                 created_on=date(2026, 3, 7),
                 tags=["writing"],
+                access_flags={"needs_vpn": False, "cn_lang": True, "cn_payment": False},
+                pricing_type="subscription",
+                price_min_cny=68,
+                price_max_cny=68,
             ),
             _add_tool(
                 db,
@@ -187,6 +224,9 @@ def setup_module():
                 score=7.5,
                 created_on=date(2026, 3, 6),
                 tags=["free", "writing"],
+                access_flags={"needs_vpn": False, "cn_lang": True, "cn_payment": True},
+                pricing_type="free",
+                free_allowance_text="永久免费",
             ),
             _add_tool(
                 db,
@@ -303,6 +343,37 @@ def setup_module():
         for tool in tools:
             if tool.slug in {"gamma", "data-pilot", "notion-ai"}:
                 _upsert_tool_embedding(db, tool)
+
+        db.add_all(
+            [
+                ToolReview(
+                    tool_id=tools[0].id,
+                    source_type="editor",
+                    status="published",
+                    rating=9.4,
+                    title="编辑结论",
+                    body="适合先上手，再决定是否长期使用。",
+                    pitfalls_json=["高级团队协作仍需自行补充流程"],
+                    pros_json=["上手快", "无需翻墙"],
+                    cons_json=["深度定制有限"],
+                    audience="内容团队",
+                    task="快速起草与问答",
+                ),
+                ToolReview(
+                    tool_id=tools[0].id,
+                    source_type="user",
+                    status="published",
+                    rating=8.8,
+                    title="资深用户反馈",
+                    body="适合高频通用任务，但复杂流程最好配合其他工具。",
+                    pitfalls_json=["复杂工作流需要二次编排"],
+                    pros_json=["免费可用"],
+                    cons_json=["复杂场景需要复核"],
+                    audience="独立开发者",
+                    task="高频日常生产",
+                ),
+            ]
+        )
         db.commit()
     finally:
         db.close()
@@ -343,6 +414,9 @@ def test_tools_directory_default_response_shape_and_visibility():
         "categories",
         "tags",
         "statuses",
+        "priceFacets",
+        "accessFacets",
+        "priceRangeFacets",
         "presets",
     }
     assert payload["page"] == 1
@@ -351,6 +425,10 @@ def test_tools_directory_default_response_shape_and_visibility():
     assert len(payload["items"]) == 9
     assert payload["hasMore"] is True
     assert {item["slug"] for item in payload["items"]}.isdisjoint({"draft-tool", "archived-tool"})
+    first = payload["items"][0]
+    assert "reviewCount" in first
+    assert "accessFlags" in first
+    assert "pricingType" in first
 
 
 def test_tools_directory_page_two_returns_only_second_page_slice():
@@ -365,7 +443,7 @@ def test_tools_directory_page_two_returns_only_second_page_slice():
 
 
 def test_tools_directory_supports_combined_filters_and_facets():
-    response = client.get("/api/tools?q=ChatGPT&category=chatbot&tag=free")
+    response = client.get("/api/tools?q=ChatGPT&category=chatbot&tag=assistant&price=subscription")
 
     assert response.status_code == 200
     payload = response.json()
@@ -375,6 +453,12 @@ def test_tools_directory_supports_combined_filters_and_facets():
     assert payload["tags"][0] == {"slug": "assistant", "label": "assistant", "count": 1}
     statuses = {item["slug"]: item["count"] for item in payload["statuses"]}
     assert statuses == {"all": 1, "published": 1}
+    assert payload["priceFacets"] == [{"slug": "subscription", "label": "订阅", "count": 1}]
+    assert payload["accessFacets"] == [
+        {"slug": "cn-lang", "label": "中文界面", "count": 1},
+        {"slug": "cn-payment", "label": "支持国内支付", "count": 1},
+        {"slug": "no-vpn", "label": "国内直连", "count": 1},
+    ]
 
 
 def test_tools_directory_empty_query_matches_default_behavior():
@@ -461,6 +545,27 @@ def test_tools_directory_task_query_matches_writing_tools():
     assert {"notion-ai", "free-writer", "meeting-note"}.intersection({item["slug"] for item in payload["items"]})
 
 
+def test_tools_directory_supports_access_and_price_range_filters():
+    response = client.get("/api/tools?access=no-vpn,cn-lang&price_range=free&page_size=24")
+
+    assert response.status_code == 200
+    payload = response.json()
+    slugs = {item["slug"] for item in payload["items"]}
+    assert {"free-writer"}.issubset(slugs)
+    assert "chatgpt" not in slugs
+    assert "claude" not in slugs
+
+
+def test_categories_hide_empty_by_default_and_can_include_empty():
+    hidden_response = client.get("/api/categories")
+    full_response = client.get("/api/categories?include_empty=true")
+
+    assert hidden_response.status_code == 200
+    assert full_response.status_code == 200
+    assert [item["slug"] for item in hidden_response.json()] == ["chatbot", "office"]
+    assert [item["slug"] for item in full_response.json()] == ["chatbot", "office", "empty"]
+
+
 def test_category_tools_only_return_published_tools():
     response = client.get("/api/categories/chatbot/tools")
 
@@ -500,6 +605,21 @@ def test_tool_detail_missing_slug_returns_404():
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Tool not found"
+
+
+def test_tool_detail_aggregates_review_content():
+    response = client.get("/api/tools/chatgpt")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["reviewCount"] == 8
+    assert payload["pitfalls"] == ["高级团队协作仍需自行补充流程", "复杂工作流需要二次编排"]
+    assert payload["targetAudience"] == ["内容团队", "独立开发者"]
+    assert payload["scenarioRecommendations"] == [
+        {"audience": "内容团队", "task": "快速起草与问答", "summary": "适合先上手，再决定是否长期使用。"},
+        {"audience": "独立开发者", "task": "高频日常生产", "summary": "适合高频通用任务，但复杂流程最好配合其他工具。"},
+    ]
+    assert len(payload["reviewPreview"]) == 2
 
 
 def _restore_selected_embeddings(*slugs: str) -> None:

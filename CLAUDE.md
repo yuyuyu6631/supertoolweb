@@ -17,9 +17,10 @@ Xingdianping (星点评) is an AI Tool Review & Discovery Platform - "Douban/Pub
 
 ### One-click Development Startup (Recommended)
 ```bash
-python start.py              # Start full stack (MySQL + Redis + API + Web)
-python start.py --stop       # Stop all running processes
-python start.py --restart    # Restart the entire stack
+npm start                    # Start local dev stack (API + Web)
+npm run stop                 # Stop the local dev stack
+npm run restart              # Restart the local dev stack
+npm run start:legacy         # Legacy path: python start.py
 ```
 
 ### Frontend Development
@@ -104,7 +105,8 @@ archive/drawer/           # Legacy archived code - NOT part of active runtime
 - `apps/api/app/core/config.py` - Backend configuration
 - `apps/api/app/models/models.py` - All SQLAlchemy models defined here
 - `apps/web/app/layout.tsx` - Root layout
-- `start.py` - One-click startup script that handles everything
+- `dev.ps1` / `dev-stop.ps1` - Standard local dev startup and stop scripts
+- `start.py` - Legacy startup script kept only for compatibility
 - `infra/docker/docker-compose.yml` - Local development services (MySQL, Redis)
 
 ## Important Archiving Policy

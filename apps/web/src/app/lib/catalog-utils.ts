@@ -1,3 +1,5 @@
+export const TOOL_SUBMISSION_URL = "https://github.com/yuyuyu6631/Next.js-AI-Tool-Demo/issues";
+
 export function slugifyLabel(value: string) {
   return value
     .normalize("NFKC")
@@ -39,17 +41,10 @@ export interface DecisionBadgeSource {
   summary?: string;
   tags?: string[];
   platforms?: string;
-  vpnRequired?: string;
 }
 
 export function buildDecisionBadges(source: DecisionBadgeSource) {
-  const text = [
-    source.price || "",
-    source.summary || "",
-    source.tags?.join(" ") || "",
-    source.platforms || "",
-    source.vpnRequired || "",
-  ]
+  const text = [source.price || "", source.summary || "", source.tags?.join(" ") || "", source.platforms || ""]
     .join(" ")
     .toLowerCase();
 
@@ -71,19 +66,6 @@ export function buildDecisionBadges(source: DecisionBadgeSource) {
   }
   if (text.includes("手机") || text.includes("mobile") || text.includes("ios") || text.includes("android") || text.includes("app")) {
     push("手机可用");
-  }
-  if (
-    text.includes("vpn 不需要") ||
-    text.includes("无需vpn") ||
-    text.includes("不需要vpn") ||
-    source.vpnRequired?.includes("不需要") ||
-    source.vpnRequired?.includes("无需") ||
-    source.vpnRequired?.includes("否")
-  ) {
-    push("无需 VPN");
-  }
-  if (text.includes("国内可访问") || text.includes("国内访问") || text.includes("中国可用") || text.includes("本地可访问")) {
-    push("国内可访问");
   }
   if (text.includes("版权安全") || text.includes("无版权风险")) {
     push("版权风险低");
@@ -130,13 +112,6 @@ export function derivePriceFacets(items: Array<{ price?: string; name: string; s
     .map(([slug, count]) => ({
       slug,
       count,
-      label:
-        slug === "free"
-          ? "免费"
-          : slug === "freemium"
-            ? "免费增值"
-            : slug === "subscription"
-              ? "订阅"
-              : "一次性付费",
+      label: slug === "free" ? "免费" : slug === "freemium" ? "免费增值" : slug === "subscription" ? "订阅" : "一次性付费",
     }));
 }

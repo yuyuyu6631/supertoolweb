@@ -22,6 +22,12 @@ def build_minimal_tool_summary(slug: str) -> ToolSummary:
                 featured=tool.featured,
                 createdAt=tool.createdAt,
                 price=getattr(tool, 'price', ''),
+                reviewCount=getattr(tool, "reviewCount", 0),
+                accessFlags=getattr(tool, "accessFlags", None),
+                pricingType=getattr(tool, "pricingType", "unknown"),
+                priceMinCny=getattr(tool, "priceMinCny", None),
+                priceMaxCny=getattr(tool, "priceMaxCny", None),
+                freeAllowanceText=getattr(tool, "freeAllowanceText", ""),
             )
     # Fallback if not found
     return ToolSummary(
@@ -72,7 +78,12 @@ TOOLS: list[ToolDetail] = [
         alternatives=["claude", "gemini"],
         status="published",
         lastVerifiedAt="2026-03-20",
-        price="免费增值",
+        price="订阅制",
+        accessFlags={"needsVpn": False, "cnLang": True, "cnPayment": True},
+        pricingType="subscription",
+        priceMinCny=145,
+        priceMaxCny=145,
+        freeAllowanceText="免费版可体验基础问答，进阶能力需订阅。",
     ),
     ToolDetail(
         id=2,
@@ -99,6 +110,10 @@ TOOLS: list[ToolDetail] = [
         status="published",
         lastVerifiedAt="2026-03-20",
         price="订阅",
+        accessFlags={"needsVpn": True, "cnLang": False, "cnPayment": False},
+        pricingType="subscription",
+        priceMinCny=145,
+        priceMaxCny=145,
     ),
     ToolDetail(
         id=3,
@@ -125,6 +140,11 @@ TOOLS: list[ToolDetail] = [
         status="published",
         lastVerifiedAt="2026-03-18",
         price="免费增值",
+        accessFlags={"needsVpn": True, "cnLang": False, "cnPayment": False},
+        pricingType="freemium",
+        priceMinCny=39,
+        priceMaxCny=79,
+        freeAllowanceText="免费版能生成基础演示稿，导出和高级主题需升级。",
     ),
 ]
 

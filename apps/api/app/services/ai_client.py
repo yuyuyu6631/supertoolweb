@@ -63,9 +63,9 @@ def rank_with_ai(payload: RecommendRequest, candidates: list) -> tuple[list, dic
         return candidates, {}
 
     candidate_map = {tool.slug: tool for tool in candidates}
+
     body = {
         "model": settings.ai_model,
-        "temperature": 0.2,
         "messages": [
             {
                 "role": "system",
@@ -76,6 +76,8 @@ def rank_with_ai(payload: RecommendRequest, candidates: list) -> tuple[list, dic
                 "content": build_prompt(payload, candidates),
             },
         ],
+        "temperature": 0.2,
+        "max_tokens": 1024,
     }
 
     api_request = request.Request(
@@ -94,12 +96,22 @@ def rank_with_ai(payload: RecommendRequest, candidates: list) -> tuple[list, dic
         print(f"[AI_CLIENT] API call failed after retries: {type(e).__name__}: {e}")
         return candidates, {}
 
-    content = (
-        payload_data.get("choices", [{}])[0]
-        .get("message", {})
-        .get("content", "")
-    )
+    choices = payload_data.get("choices", [])
+    if not choices:
+        return candidates, {}
+        
+    message = choices[0].get("message", {})
+    # Reasoning models like DeepSeek-R1 put output in reasoning_content
+    # Search models like MiniMax might have search_results or specific content structure
+    content = message.get("content") or message.get("reasoning_content") or ""
+    
+    # Check for search results metadata (some proxies or model versions return this)
+    search_results = payload_data.get("search_results") or message.get("search_results")
+    if search_results:
+        print(f"[AI_CLIENT] Search results found: {len(search_results)} items")
+
     parsed = _extract_json_block(content)
+
     if not parsed:
         return candidates, {}
 

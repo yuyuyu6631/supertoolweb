@@ -1,7 +1,26 @@
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+
+class AccessFlags(BaseModel):
+    needsVpn: bool | None = None
+    cnLang: bool | None = None
+    cnPayment: bool | None = None
+
+
+class ScenarioRecommendation(BaseModel):
+    audience: str
+    task: str
+    summary: str
+
+
+class ReviewPreview(BaseModel):
+    sourceType: str
+    title: str
+    body: str
+    rating: float | None = None
 
 
 class ToolSummary(BaseModel):
@@ -20,6 +39,12 @@ class ToolSummary(BaseModel):
     featured: bool
     createdAt: date
     price: str = ""
+    reviewCount: int = 0
+    accessFlags: AccessFlags | None = None
+    pricingType: str = "unknown"
+    priceMinCny: int | None = None
+    priceMaxCny: int | None = None
+    freeAllowanceText: str = ""
 
 
 class ToolDetail(ToolSummary):
@@ -31,12 +56,15 @@ class ToolDetail(ToolSummary):
     price: str = ""
     platforms: str = ""
     vpnRequired: str = ""
-    targetAudience: list[str]
-    abilities: list[str]
-    pros: list[str]
-    cons: list[str]
-    scenarios: list[str]
-    alternatives: list[str]
+    targetAudience: list[str] = Field(default_factory=list)
+    abilities: list[str] = Field(default_factory=list)
+    pros: list[str] = Field(default_factory=list)
+    cons: list[str] = Field(default_factory=list)
+    pitfalls: list[str] = Field(default_factory=list)
+    scenarios: list[str] = Field(default_factory=list)
+    scenarioRecommendations: list[ScenarioRecommendation] = Field(default_factory=list)
+    reviewPreview: list[ReviewPreview] = Field(default_factory=list)
+    alternatives: list[str] = Field(default_factory=list)
     lastVerifiedAt: date
 
 

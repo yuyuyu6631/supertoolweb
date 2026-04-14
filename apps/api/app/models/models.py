@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.session import Base
@@ -33,18 +33,25 @@ class Tool(Base, TimestampMixin):
     price: Mapped[str] = mapped_column(String(64), default="")
     platforms: Mapped[str] = mapped_column(String(255), default="")
     vpn_required: Mapped[str] = mapped_column(String(32), default="")
+    access_flags: Mapped[dict[str, bool | None] | None] = mapped_column(JSON, nullable=True)
     official_url: Mapped[str] = mapped_column(String(255))
     logo_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
     logo_status: Mapped[str] = mapped_column(String(32), default="missing")
     logo_source: Mapped[str] = mapped_column(String(32), default="imported")
     score: Mapped[float] = mapped_column(Float, index=True)
+    review_count: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[str] = mapped_column(String(32), default="published", index=True)
     featured: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    pricing_type: Mapped[str] = mapped_column(String(32), default="unknown")
+    price_min_cny: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_max_cny: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    free_allowance_text: Mapped[str] = mapped_column(String(255), default="")
     created_on: Mapped[date] = mapped_column(Date, index=True)
     last_verified_at: Mapped[date] = mapped_column(Date)
 
     tags: Mapped[list["ToolTag"]] = relationship(back_populates="tool", cascade="all, delete-orphan")
     categories: Mapped[list["ToolCategory"]] = relationship(back_populates="tool", cascade="all, delete-orphan")
+    reviews: Mapped[list["ToolReview"]] = relationship(back_populates="tool", cascade="all, delete-orphan")
 
 
 class ToolEmbedding(Base, TimestampMixin):
@@ -187,6 +194,27 @@ class ToolUpdate(Base, TimestampMixin):
     status: Mapped[str] = mapped_column(String(32), default="pending_review")
     proposed_payload: Mapped[str] = mapped_column(Text)
     reviewer_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ToolReview(Base, TimestampMixin):
+    __tablename__ = "tool_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tool_id: Mapped[int] = mapped_column(ForeignKey("tools.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    source_type: Mapped[str] = mapped_column(String(16), default="editor", index=True)
+    status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
+    rating: Mapped[float | None] = mapped_column(Float, nullable=True)
+    title: Mapped[str] = mapped_column(String(255), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    pitfalls_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    pros_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    cons_json: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    audience: Mapped[str] = mapped_column(String(120), default="")
+    task: Mapped[str] = mapped_column(String(160), default="")
+
+    tool: Mapped["Tool"] = relationship(back_populates="reviews")
+    user: Mapped["User | None"] = relationship()
 
 
 class User(Base, TimestampMixin):

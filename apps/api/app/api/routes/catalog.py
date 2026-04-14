@@ -18,6 +18,8 @@ def get_tools(
     tag: str | None = Query(default=None),
     status: str | None = Query(default=None),
     price: str | None = Query(default=None),
+    access: str | None = Query(default=None),
+    price_range: str | None = Query(default=None),
     sort: str = Query(default="featured"),
     view: str = Query(default="hot"),
     page: int = Query(default=1, ge=1),
@@ -30,6 +32,8 @@ def get_tools(
         tag_slug=tag,
         status_slug=status,
         price_slug=price,
+        access_slug=access,
+        price_range_slug=price_range,
         sort=sort,
         view=view,
         page=page,
@@ -42,6 +46,12 @@ def get_import_preview_validation():
     return load_import_preview_validation()
 
 
+@router.get("/tools/search-index", response_model=list[ToolSummary])
+def get_search_index(db: Session = Depends(get_db)):
+    """返回全量对外发布的精简工具列表，供前端纯本地模糊搜索与过滤"""
+    return catalog_service._load_summaries(db, status_filter=catalog_service.PUBLIC_TOOL_STATUS)
+
+
 @router.get("/tools/{slug}", response_model=ToolDetail)
 def get_tool(slug: str, db: Session = Depends(get_db)):
     tool = catalog_service.get_tool(db=db, slug=slug)
@@ -51,8 +61,11 @@ def get_tool(slug: str, db: Session = Depends(get_db)):
 
 
 @router.get("/categories", response_model=list[CategorySummary])
-def get_categories(db: Session = Depends(get_db)):
-    return catalog_service.list_categories(db=db)
+def get_categories(
+    include_empty: bool = Query(default=False),
+    db: Session = Depends(get_db),
+):
+    return catalog_service.list_categories(db=db, include_empty=include_empty)
 
 
 @router.get("/categories/{slug}/tools", response_model=list[ToolSummary])

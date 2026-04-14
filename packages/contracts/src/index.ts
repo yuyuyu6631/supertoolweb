@@ -15,6 +15,13 @@ export interface ToolSummary {
   status: ToolStatus;
   featured: boolean;
   createdAt: string;
+  price?: string;
+  reviewCount?: number;
+  accessFlags?: AccessFlags | null;
+  pricingType?: string;
+  priceMinCny?: number | null;
+  priceMaxCny?: number | null;
+  freeAllowanceText?: string;
 }
 
 export interface ToolDetail extends ToolSummary {
@@ -30,10 +37,32 @@ export interface ToolDetail extends ToolSummary {
   abilities: string[];
   pros: string[];
   cons: string[];
+  pitfalls?: string[];
   scenarios: string[];
+  scenarioRecommendations?: ScenarioRecommendation[];
+  reviewPreview?: ReviewPreview[];
   alternatives: string[];
   status: ToolStatus;
   lastVerifiedAt: string;
+}
+
+export interface AccessFlags {
+  needsVpn?: boolean | null;
+  cnLang?: boolean | null;
+  cnPayment?: boolean | null;
+}
+
+export interface ScenarioRecommendation {
+  audience: string;
+  task: string;
+  summary: string;
+}
+
+export interface ReviewPreview {
+  sourceType: "editor" | "user" | string;
+  title: string;
+  body: string;
+  rating?: number | null;
 }
 
 export interface ScenarioSummary {

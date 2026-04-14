@@ -14,6 +14,13 @@ export interface ToolSummary {
   featured: boolean;
   createdAt: string;
   price: string;
+  reviewCount?: number;
+  accessFlags?: AccessFlags | null;
+  pricingType?: string;
+  priceMinCny?: number | null;
+  priceMaxCny?: number | null;
+  freeAllowanceText?: string;
+  reason?: string | null;
 }
 
 export interface ToolDetail extends ToolSummary {
@@ -29,9 +36,31 @@ export interface ToolDetail extends ToolSummary {
   abilities: string[];
   pros: string[];
   cons: string[];
+  pitfalls?: string[];
   scenarios: string[];
+  scenarioRecommendations?: ScenarioRecommendation[];
+  reviewPreview?: ReviewPreview[];
   alternatives: string[];
   lastVerifiedAt: string;
+}
+
+export interface AccessFlags {
+  needsVpn?: boolean | null;
+  cnLang?: boolean | null;
+  cnPayment?: boolean | null;
+}
+
+export interface ScenarioRecommendation {
+  audience: string;
+  task: string;
+  summary: string;
+}
+
+export interface ReviewPreview {
+  sourceType: "editor" | "user" | string;
+  title: string;
+  body: string;
+  rating?: number | null;
 }
 
 export interface FacetOption {
@@ -57,6 +86,8 @@ export interface ToolsDirectoryResponse {
   tags: FacetOption[];
   statuses: FacetOption[];
   priceFacets?: FacetOption[];
+  accessFacets?: FacetOption[];
+  priceRangeFacets?: FacetOption[];
   presets: PresetView[];
 }
 
@@ -83,4 +114,39 @@ export interface RankingSection {
   title: string;
   description: string;
   items: RankingItem[];
+}
+
+export interface AiQuickActionPayload {
+  type: string;
+  key?: string | null;
+  value?: string | null;
+}
+
+export interface AiQuickAction {
+  label: string;
+  action: AiQuickActionPayload;
+}
+
+export interface AiPanel {
+  title: string;
+  user_need: string;
+  system_understanding: string;
+  active_logic: string[];
+  quick_actions: AiQuickAction[];
+}
+
+export interface AiSearchMeta {
+  latency_ms: number;
+  cache_hit: boolean;
+  intent_source: string;
+}
+
+export interface AiSearchResponse {
+  mode: "ai";
+  query: string;
+  normalized_query: string;
+  ai_panel: AiPanel;
+  results: ToolSummary[];
+  directory: ToolsDirectoryResponse;
+  meta: AiSearchMeta;
 }

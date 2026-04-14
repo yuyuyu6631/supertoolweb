@@ -1,10 +1,9 @@
-import path from "node:path";
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
-const nextConfig: NextConfig = {
-  turbopack: {
-    root: path.resolve(__dirname, "..", ".."),
-  },
-};
-
-export default nextConfig;
+export default function createNextConfig(phase: string): NextConfig {
+  return {
+    // Keep dev and build outputs separate so `next build` cannot poison the running dev server.
+    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+  };
+}

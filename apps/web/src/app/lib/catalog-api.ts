@@ -1,6 +1,8 @@
 import type {
   RankingSection,
   ScenarioSummary,
+  AiSearchResponse,
+  ToolSummary,
   ToolDetail,
   ToolsDirectoryResponse,
 } from "./catalog-types";
@@ -50,6 +52,15 @@ export async function fetchDirectory(
   queryString = "",
 ): Promise<ToolsDirectoryResponse> {
   return fetchJson<ToolsDirectoryResponse>(`/api/tools${queryString ? `?${queryString}` : ""}`);
+}
+
+export async function fetchAiSearch(queryString = ""): Promise<AiSearchResponse> {
+  return fetchJson<AiSearchResponse>(`/api/ai-search${queryString ? `?${queryString}` : ""}`);
+}
+
+export async function fetchSearchIndex(): Promise<ToolSummary[]> {
+  // 不传递 options 禁用缓存，或者给一个更长时间的缓存，依赖数据实时性，这里我们复用 catalog cache
+  return fetchJson<ToolSummary[]>("/api/tools/search-index");
 }
 
 export async function fetchToolDetail(slug: string): Promise<ToolDetail | null> {

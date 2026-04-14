@@ -13,7 +13,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": new URL(".", import.meta.url).pathname,
-      "react-router": new URL("./src/compat/react-router.tsx", import.meta.url).pathname
+      "react-router": new URL("./src/compat/react-router.tsx", import.meta.url).pathname,
+      "next/link": "next/link.js"
     }
   }
 });

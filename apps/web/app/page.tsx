@@ -12,6 +12,8 @@ const EMPTY_DIRECTORY: ToolsDirectoryResponse = {
   tags: [],
   statuses: [],
   priceFacets: [],
+  accessFacets: [],
+  priceRangeFacets: [],
   presets: [],
 };
 

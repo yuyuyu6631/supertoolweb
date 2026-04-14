@@ -33,8 +33,8 @@ class ScenarioSeedDefinition:
     target_audience: tuple[str, ...]
     category_names: tuple[str, ...]
     keywords: tuple[str, ...]
-    primary_count: int = 6
-    alternative_count: int = 4
+    primary_count: int = 3
+    alternative_count: int = 2
 
 
 RANKING_DEFINITIONS: tuple[RankingSeedDefinition, ...] = (
@@ -109,7 +109,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="make-ppt",
         title="做PPT用什么AI",
-        description="优先看能快速产出完整演示稿的工具，先把结构和页面生成出来，再做少量微调。",
+        description="汇报总在最后一晚才开工？先找能把结构、配色和页面一起撑起来的工具，别再从空白页硬抠。",
         problem="汇报和提案通常时间紧，最大的损耗不是内容没有，而是从空白页搭框架和排版太慢。",
         target_audience=("销售", "产品经理", "咨询顾问", "创业者"),
         category_names=("AI PPT制作", "AI写作"),
@@ -118,7 +118,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="write-copy",
         title="写文案用什么AI",
-        description="适合营销文案、社媒内容和落地页初稿生成，先快速铺开方向，再做人工修改。",
+        description="卡在第一句、改到第十版还不满意？先用 AI 铺开方向，再挑那些能稳住语气和转化感的工具。",
         problem="文案工作往往不是没有想法，而是很难持续、稳定地高质量输出多个版本。",
         target_audience=("运营", "市场团队", "内容团队", "独立创作者"),
         category_names=("AI写作", "AI聊天助手"),
@@ -127,7 +127,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="write-email-doc",
         title="写邮件和文档用什么AI",
-        description="适合邮件、方案、说明文档和内部协作文档整理，强调结构化表达和改写能力。",
+        description="邮件、方案和说明文档最怕又长又散。优先找能把结构理顺、语气拿捏住的工具。",
         problem="邮件和文档的难点通常在于结构、语气和准确性，而不是单纯把字写出来。",
         target_audience=("产品经理", "销售", "咨询顾问", "企业团队"),
         category_names=("AI文档办公", "AI写作", "AI聊天助手"),
@@ -136,7 +136,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="code-dev",
         title="写代码用什么AI",
-        description="适合日常开发、脚手架生成和 API 编写，优先看上下文理解和代码产出稳定性。",
+        description="你的全天候结对编程搭档。专治写不完的增删改查和复杂正则，重点挑那些读懂上下文、不乱写 Bug 的工具。",
         problem="开发提效的关键不只是补全，而是能不能减少样板代码、查资料和上下文切换。",
         target_audience=("开发者", "技术负责人", "独立开发者", "产品工程团队"),
         category_names=("AI代码编程", "AI聊天助手"),
@@ -145,7 +145,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="debug-refactor",
         title="调试和重构用什么AI",
-        description="聚焦代码解释、问题定位、测试补充和重构建议，适合处理复杂代码改造任务。",
+        description="线上问题一来就头大？先找能读懂旧代码、定位风险、补测试的工具，而不是只会瞎改几行。",
         problem="调试和重构的难点在于理解旧代码和找到真正的风险点，而不是生成几行新代码。",
         target_audience=("开发者", "技术负责人", "测试工程师", "维护团队"),
         category_names=("AI代码编程", "AI聊天助手"),
@@ -154,7 +154,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="make-poster",
         title="做海报和配图用什么AI",
-        description="适合海报、封面、广告图和配图产出，优先看视觉完成度和风格控制能力。",
+        description="海报、封面和配图最怕赶时间还要反复返工。优先选那些出图快、风格稳、改图不折腾的工具。",
         problem="视觉物料常常要在很短时间内产出多个版本，纯手工设计成本高、返工也重。",
         target_audience=("设计师", "运营", "市场团队", "电商团队"),
         category_names=("AI 图像",),
@@ -163,7 +163,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="make-video",
         title="做视频用什么AI",
-        description="适合短视频、宣传视频和解说视频制作，重点看素材生成与成片效率。",
+        description="短视频不是剪完就行，脚本、素材、配音都在耗时间。先挑能把整条链路串起来的工具。",
         problem="视频生产链路长，脚本、素材、配音和剪辑往往分散在多个工具里，流程很碎。",
         target_audience=("内容团队", "品牌团队", "短视频运营", "创作者"),
         category_names=("AI 视频", "AI 音频·音乐"),
@@ -172,7 +172,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="meeting-summary",
         title="会议记录整理用什么AI",
-        description="适合录音转写、会议摘要、待办抽取和纪要沉淀，优先看结构化整理能力。",
+        description="会开完最累的不是记下来，而是会后没人看。优先找能把纪要、待办和结论一次整理清楚的工具。",
         problem="会议记录的核心痛点不是记下来，而是会后如何快速整理、提炼结论并同步团队。",
         target_audience=("产品经理", "运营", "项目经理", "企业团队"),
         category_names=("AI记录摘要", "AI文档办公", "AI聊天助手"),
@@ -181,7 +181,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="data-analysis",
         title="做数据分析和报表用什么AI",
-        description="适合报表、指标分析和商业洞察，优先看数据理解、图表表达和结论输出能力。",
+        description="报表能做，结论却总说不明白？先找能读懂数据、给出图表和结论草稿的工具。",
         problem="数据工作往往卡在分析思路、报表制作和结论表达，而不是拿不到数据本身。",
         target_audience=("运营", "分析师", "产品经理", "业务负责人"),
         category_names=("AI数据分析", "AI文档办公"),
@@ -190,7 +190,7 @@ SCENARIO_DEFINITIONS: tuple[ScenarioSeedDefinition, ...] = (
     ScenarioSeedDefinition(
         slug="build-agent",
         title="搭建智能体和工作流用什么AI",
-        description="适合搭 Agent、自动化流程和多步骤执行链路，优先看编排能力和集成能力。",
+        description="想把重复活自动跑起来，就别只看会聊天的模型。优先挑能接知识库、编排流程、稳定执行的工具。",
         problem="团队真正需要的不是单次回答，而是把重复任务串成能稳定复用的自动化流程。",
         target_audience=("开发者", "自动化团队", "创业者", "产品团队"),
         category_names=("AI 智能体", "AI代码编程"),

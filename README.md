@@ -1,195 +1,93 @@
-# 星点评 (Xingdianping)
+﻿# 星点评（Xingdianping）
 
-> AI 工具点评与发现平台 - "AI工具界的豆瓣"，帮助用户发现、比较和推荐 AI 工具。
+AI 工具发现、评测与对比平台（Monorepo）。
 
-星点评是一个开源的 AI 工具点评平台，目标是成为 AI Agent 时代的公共点评社区，让用户更好地发现和选择优质 AI 工具。
+## 当前能力
+
+- 工具目录：列表页、详情页、分类筛选、状态展示
+- 对比能力：多工具对比页（`/compare/[comparisonSlug]`）
+- 匹配推荐：`/matches` 场景化推荐流
+- AI 能力：
+  - 聊天与 RAG（后端 `chat` 路由）
+  - AI Search（后端 `ai_search` 路由）
+  - 工具解析（后端 `parser` 路由）
+- 评测与访问条件：评分、评论计数、可访问性标识（VPN/中文等）
 
 ## 技术栈
 
-- **后端**: FastAPI 0.115+, Python 3.11+, SQLAlchemy 2.0, Alembic, Pydantic
-- **前端**: Next.js 15.2+, React 19, TypeScript 5.8+, Tailwind CSS 4.1+, Vitest
-- **数据库**: MySQL 8.4+, Redis 7.4+ (支持 Docker 容器或本地直接安装)
-- **基础设施**: Docker Compose 可选，也可纯本地开发
+- 前端：Next.js 15、React 19、TypeScript、Vitest、Playwright
+- 后端：FastAPI、SQLAlchemy、Alembic、Pytest
+- 基础设施：MySQL、Redis（本地或 Docker）
 
 ## 项目结构
 
-当前运行链路已经收敛为单一应用栈：
-
-- `apps/web`：唯一前端入口，基于 Next.js
-- `apps/api`：唯一后端入口，基于 FastAPI
-- `packages/contracts`：前后端共享类型契约
-
-历史 demo、旧工具资产和临时文件已经移出运行链路，统一归档到 `archive/drawer/`，只作参考，不参与启动、构建或测试。
-
-## 快速开始
-
-### 一键启动开发环境（推荐）
-
-```bash
-python start.py              # 启动全栈 (API + Web，需要先确保 MySQL + Redis 已启动)
-python start.py --stop       # 停止所有进程
-python start.py --restart    # 重启全栈
+```text
+apps/
+  api/                FastAPI 服务与测试
+  web/                Next.js 前端与测试
+packages/
+  contracts/          前后端共享类型
+doc/                  项目过程文档
+docs/                 技术方案与交接文档
+scripts/              根目录脚本
 ```
 
-默认行为：
+## 本地启动
 
-- 从 `.env` 读取环境和密钥配置
-- 自动检查端口占用，只在端口空闲时启动
-- 检查本地 MySQL / Redis 服务是否可达
-- 同时启动 `apps/api` 后端与 `apps/web` 前端
-
-### 单独启动前端开发
+1. 安装依赖
 
 ```bash
-npm run dev              # 仅启动前端开发服务器，3000 被占用时自动顺延到下一个空闲端口
-```
-
-### 手动完整启动（不使用一键脚本）
-
-如果你需要手动分步启动，按照以下步骤操作：
-
-**1. 准备环境配置**
-```bash
-cp .env.example .env
-# 编辑 .env 文件，填入正确的 DATABASE_URL 和 REDIS_URL 配置
-```
-
-**2. 启动基础服务**
-
-如果使用 Docker：
-```bash
-cd infra/docker
-docker-compose up -d mysql redis
-cd ../..
-```
-
-如果本地已经直接安装了 MySQL + Redis：
-```bash
-# 确保 MySQL 已经在 3306 端口启动
-# 确保 Redis 已经在 6379 端口启动
-# 检查 .env 文件中的 DATABASE_URL 和 REDIS_URL 指向你的本地服务
-```
-
-**3. 安装依赖**
-```bash
-# 安装前端依赖
-cd apps/web
 npm install
-
-# 安装后端依赖
-cd ../api
-pip install -r requirements.txt
+cd apps/api
+pip install -e .[dev]
 ```
 
-**4. 运行数据库迁移**
+2. 配置环境变量
+
+- 复制 `.env.example` 为 `.env`
+- 配置数据库与 Redis 连接
+
+3. 启动服务
+
 ```bash
-# 仍在 apps/api 目录下
-alembic upgrade head
+# 根目录
+npm start
 ```
 
-**5. 启动后端 API（FastAPI）**
-```bash
-# 在 apps/api 目录
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-API 将运行在 `http://localhost:8000`
+## 测试
 
-**6. 启动前端 Web（Next.js）**
-打开新终端，执行：
 ```bash
-cd apps/web
-node scripts/dev.mjs --hostname 0.0.0.0 --port 3000
+# 前端单测
+npm run test:web
+
+# 后端测试
+cd apps/api
+python -m pytest
 ```
-前端将运行在 `http://localhost:3000`
+
+本次推送前已执行：
+- `npm run test:web` 通过（12 files, 36 tests）
+- `python -m pytest` 通过（132 passed）
+
+## 提交规范（本仓库约定）
+
+- 仅提交有效源码、测试与必要文档
+- 不提交构建缓存与临时文件（如 `*.tsbuildinfo`、`output/`）
+- 调试脚本与临时验证文件不进入主干提交
 
 ## 常用命令
 
-### 前端开发
 ```bash
-npm run dev              # 启动前端开发服务器
-npm run build:web        # 生产环境构建前端
-npm run lint:web         # 运行 ESLint 检查
-npm run test:web         # 运行 Vitest 单元测试
-npm run test:web:watch   # 监听模式运行测试
+npm run dev:web
+npm run build:web
+npm run lint:web
+npm run test:web
 ```
 
-### 后端开发
+后端：
+
 ```bash
 cd apps/api
-pytest                   # 运行所有 pytest 测试
-pytest tests/test_file.py  # 运行单个测试文件
-alembic upgrade head    # 执行数据库迁移
+alembic upgrade head
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
-
-### 数据导入
-```bash
-npm run organize:aitool         # 整理 AI 工具资产
-npm run validate:aitool:preview # 验证预览数据导入
-npm run import:aitool:preview   # 导入预览数据
-npm run import:aitool:all       # 导入全部 AI 工具数据
-```
-
-## 当前项目结构
-
-```text
-workfile/
-├─ apps/
-│  ├─ api/
-│  │  ├─ alembic/              # 数据库迁移
-│  │  ├─ app/                  # FastAPI 主代码
-│  │  │  ├─ api/               # 路由层
-│  │  │  ├─ core/              # 配置项
-│  │  │  ├─ db/                # 数据库会话与连接
-│  │  │  ├─ models/            # SQLAlchemy 模型
-│  │  │  ├─ schemas/           # Pydantic schema
-│  │  │  └─ services/          # 目录、推荐、抓取等服务
-│  │  ├─ tests/                # API 测试
-│  │  ├─ alembic.ini
-│  │  ├─ Dockerfile
-│  │  └─ pyproject.toml
-│  └─ web/
-│     ├─ app/                  # Next.js App Router 入口
-│     ├─ public/               # 静态资源
-│     ├─ src/
-│     │  ├─ app/               # 页面组件与业务组件
-│     │  ├─ compat/            # 兼容层
-│     │  ├─ data/              # 前端内置数据与兜底数据
-│     │  └─ styles/            # 主题与全局样式
-│     ├─ Dockerfile
-│     ├─ next.config.ts
-│     ├─ package.json
-│     ├─ tsconfig.json
-│     └─ vitest.config.ts
-├─ packages/
-│  └─ contracts/               # 共享类型与契约
-├─ infra/
-│  ├─ docker/                  # Docker Compose 与容器配置
-│  └─ sql/                     # 初始化 SQL
-├─ doc/                        # 项目过程文档与架构说明
-├─ goal/                       # 愿景、目标与业务方向文档
-├─ archive/
-│  └─ drawer/
-│     ├─ legacy-frontend/      # 已归档的旧前端 Demo
-│     ├─ tooling-assets/       # 已归档的旧工具与素材资产
-│     ├─ runtime-temp/         # 临时调试产物
-│     └─ README.md
-├─ .env
-├─ .env.example
-├─ package.json                # 根工作区脚本
-└─ start.py                    # 一键启动脚本
-```
-
-## 目录职责
-
-- `apps/api/app/services`：当前后端业务核心，目录查询、推荐、候选筛选、AI 调用都在这里。
-- `apps/web/app` 与 `apps/web/src/app`：当前前端页面和组件主入口。
-- `packages/contracts`：共享契约层，适合放跨前后端复用的类型定义。
-- `infra`：本地开发和部署所需的基础设施配置。
-- `archive/drawer`：已经脱离运行链路的历史目录，避免继续污染主工程。
-
-## 归档原则
-
-- 运行链路只保留 `apps/web` 和 `apps/api`
-- 构建链路只保留当前 monorepo 需要的脚本与依赖
-- 测试链路只覆盖当前有效应用
-- 历史目录保留在 `archive/drawer/`，避免继续污染根目录与脚本入口

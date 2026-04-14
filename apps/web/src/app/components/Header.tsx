@@ -4,6 +4,7 @@ import HeaderAuthControls from "./HeaderAuthControls";
 import HeaderMobileMenu from "./HeaderMobileMenu";
 import PlatformLogo from "./PlatformLogo";
 import { headerNavItems, isHeaderNavActive } from "./header-nav";
+import CommandPalette from "./CommandPalette";
 
 interface HeaderProps {
   currentPath: string;
@@ -25,9 +26,8 @@ export default function Header({ currentPath, currentRoute = currentPath }: Head
             <Link
               key={item.href}
               href={item.href}
-              className={`nav-link text-sm font-medium transition ${
-                isHeaderNavActive(currentPath, item.href) ? "is-active text-slate-950" : "text-slate-600 hover:text-slate-900"
-              }`}
+              className={`nav-link text-sm font-medium transition ${isHeaderNavActive(currentPath, item.href) ? "is-active text-slate-950" : "text-slate-600 hover:text-slate-900"
+                }`}
             >
               {item.label}
             </Link>
@@ -37,19 +37,19 @@ export default function Header({ currentPath, currentRoute = currentPath }: Head
         <div className="hidden items-center gap-3 md:flex">
           <div
             className="hidden max-w-[320px] items-start gap-2 rounded-full border border-white/45 bg-white/70 px-4 py-2 text-left text-[11px] leading-4 text-slate-700 shadow-sm backdrop-blur-md lg:inline-flex"
-            title="持续评测、可追溯的 AI 工具推荐"
-            aria-label="持续评测、可追溯的 AI 工具推荐"
+            title="帮你少试错，也帮你少浪费时间"
+            aria-label="帮你少试错，也帮你少浪费时间"
           >
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-slate-700" aria-hidden="true" />
             <span className="min-w-0">
-              <span className="block font-medium text-slate-900">持续评测，可追溯推荐</span>
-              <span className="block text-slate-500">围绕任务给建议，而不只是工具链接列表</span>
+              <span className="block font-medium text-slate-900">帮你少试错，也帮你少花时间</span>
+              <span className="block text-slate-500">用对 AI 工具，比多装 10 个工具更重要</span>
             </span>
           </div>
-          <Link href="/tools" className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-white">
-            <Search className="h-4 w-4" />
-            浏览工具
+          <Link href="/tools" className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/70 px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-white hidden xl:inline-flex">
+            全部工具
           </Link>
+          <CommandPalette />
           <HeaderAuthControls authHref={authHref} />
         </div>
 

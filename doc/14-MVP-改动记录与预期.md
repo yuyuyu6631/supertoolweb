@@ -46,13 +46,17 @@
 
 - `GET /api/tools`
 - `GET /api/tools/{slug}`
+- `GET /api/tools/search-index`
+- `GET /api/tools/import-preview/validation`
 - `GET /api/categories`
 - `GET /api/categories/{slug}/tools`
 - `GET /api/rankings`
 - `GET /api/rankings/{slug}`
 - `GET /api/scenarios`
 - `GET /api/scenarios/{slug}`
-- `POST /api/recommend`
+- `GET /api/ai-search`（AI 意图解析搜索，含 AI Panel，与 recommend 是两个独立端点）
+- `POST /api/recommend`（批量工具推荐）
+- `POST /api/chat`（流式 RAG 对话）
 - `POST /api/crawl/jobs`
 - `POST /api/auth/register`
 - `POST /api/auth/login`

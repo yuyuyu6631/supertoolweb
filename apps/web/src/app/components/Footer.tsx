@@ -7,13 +7,13 @@ export default function Footer() {
         <div>
           <h3 className="text-sm font-semibold text-slate-900">关于星点评</h3>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            星点评是一个 AI 工具点评与发现平台，围绕任务、成本、访问条件和可信度，帮助用户更快做出选择。
+            星点评，帮你把 AI 工具看明白，再决定要不要用。面向真实任务的 AI 工具发现与决策平台，少一点信息堆砌，多一点实际判断。
           </p>
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-900">使用说明</h3>
           <p className="mt-3 text-sm leading-7 text-slate-600">
-            首页提供推荐入口和常用分类，工具目录支持继续筛选，工具详情页可查看简介、基础信息并访问官网。
+            直接搜你想做的事，优先从别人验证过的高频工具开始，不仅发现新工具，更帮你减少试错成本。
           </p>
         </div>
         <div>

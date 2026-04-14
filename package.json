@@ -8,8 +8,11 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @xingdianping/web --",
-    "dev:full": "python start.py",
-    "start": "python start.py",
+    "dev:full": "powershell -ExecutionPolicy Bypass -File ./dev.ps1",
+    "start": "powershell -ExecutionPolicy Bypass -File ./dev.ps1",
+    "stop": "powershell -ExecutionPolicy Bypass -File ./dev-stop.ps1",
+    "restart": "powershell -ExecutionPolicy Bypass -File ./dev.ps1 -Restart",
+    "start:legacy": "python start.py",
     "dev:web": "npm run dev --workspace @xingdianping/web --",
     "organize:aitool": "python apps/api/app/scripts/organize_aitool_assets.py",
     "validate:aitool:preview": "python apps/api/app/scripts/validate_aitool_preview.py",

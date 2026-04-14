@@ -13,7 +13,9 @@ node_modules/
 dist/
 dist-ssr/
 coverage/
+*.tsbuildinfo
 .next/
+.next-dev/
 out/
 apps/web/test-results/
 apps/web/src/e2e/visual.spec.ts-snapshots/
@@ -39,6 +41,9 @@ __pycache__/
 .agent/
 .claude/
 output/
+.dev-stack.json
+.tmp-*
+testagentfilespace/
 *.db
 秘钥.txt
 

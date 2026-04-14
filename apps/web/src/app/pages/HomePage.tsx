@@ -1,10 +1,16 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Search } from "lucide-react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ToolCard from "../components/ToolCard";
 import type { PresetView, ScenarioSummary, ToolSummary } from "../lib/catalog-types";
 import { buildDecisionBadges, buildToolsHref } from "../lib/catalog-utils";
+import { detectPriceLabel } from "../lib/tool-display";
+import { trackEvent } from "../lib/analytics";
 
 interface HomePageProps {
   featuredTools: ToolSummary[];
@@ -13,23 +19,55 @@ interface HomePageProps {
   audienceScenarios: ScenarioSummary[];
 }
 
-const quickSearches = [
-  { label: "写文案", query: "写文案" },
-  { label: "做海报", query: "做海报" },
-  { label: "写代码", query: "写代码" },
-  { label: "做数据", query: "做数据" },
+type SearchMode = "search" | "ai";
+
+const quickExamples = [
+  "免费做 PPT 的工具",
+  "写周报用什么 AI",
+  "适合新手的 AI 编程工具",
+  "帮我找视频剪辑 AI",
+  "对比 3 个 AI 写作工具",
+  "适合做产品原型的 AI",
 ];
 
-function detectPriceLabel(tool: ToolSummary) {
-  const text = `${tool.price} ${tool.name} ${tool.summary} ${tool.tags.join(" ")}`.toLowerCase();
-  if (text.includes("免费") || text.includes("free")) return "free";
-  if (text.includes("免费增值") || text.includes("freemium")) return "freemium";
-  if (text.includes("订阅") || text.includes("月付") || text.includes("yearly") || text.includes("monthly")) return "subscription";
-  if (text.includes("付费") || text.includes("一次性") || text.includes("lifetime")) return "one-time";
-  return null;
-}
-
 export default function HomePage({ featuredTools, categories, presets, audienceScenarios }: HomePageProps) {
+  const router = useRouter();
+  const [mode, setMode] = useState<SearchMode>("search");
+  const [query, setQuery] = useState("");
+  const [errorText, setErrorText] = useState("");
+
+  const modePlaceholder = useMemo(
+    () =>
+      mode === "search"
+        ? "例如：写周报、做 PPT、剪视频、写代码、做海报"
+        : "例如：帮我找免费的 PPT 工具，适合新手，中文优先",
+    [mode],
+  );
+
+  const submitByMode = (rawInput: string, nextMode: SearchMode) => {
+    const trimmed = rawInput.trim();
+
+    if (nextMode === "ai" && !trimmed) {
+      setErrorText("先输入你的需求");
+      return;
+    }
+
+    setErrorText("");
+    const params = new URLSearchParams();
+    params.set("mode", nextMode);
+    if (trimmed) {
+      params.set("q", trimmed);
+    }
+
+    trackEvent(nextMode === "search" ? "home_submit_search" : "home_submit_ai", {
+      mode: nextMode,
+      has_query: Boolean(trimmed),
+      query_length: trimmed.length,
+    });
+
+    router.push(`/tools?${params.toString()}`);
+  };
+
   return (
     <div className="page-shell">
       <Header currentPath="/" currentRoute="/" />
@@ -37,77 +75,100 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
       <main>
         <section className="hero-shell border-b border-white/25 py-16 md:py-20">
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
-            <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_440px] lg:items-start">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">AI 工具点评与发现平台</p>
-                <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight tracking-tight text-slate-950 md:text-6xl">
-                  不是找链接，而是选对 AI 工具
-                </h1>
-                <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
-                  围绕任务、成本、访问条件和可信度，帮助你更快缩小选择范围，再决定哪一个工具值得继续使用。
-                </p>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">面向真实任务的 AI 工具发现与决策平台</p>
+              <h1 className="mt-4 max-w-4xl text-4xl font-semibold leading-tight tracking-tight text-slate-950 md:text-6xl">
+                找 AI 工具，别再一个个试。
+              </h1>
+              <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600 md:text-lg">
+                直接搜，或者让 AI 按你的任务、预算和上手难度帮你缩小范围。
+              </p>
 
-                <form action="/tools" method="get" className="mt-8">
-                  <div className="search-panel rounded-[32px] p-4 md:p-5">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitByMode(query, mode);
+                }}
+                className="mt-8"
+              >
+                <div className="search-panel rounded-[32px] p-4 md:p-5">
+                  <div className="relative z-10 flex flex-col gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("search");
+                          setErrorText("");
+                          trackEvent("home_mode_switch", { mode: "search" });
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          mode === "search"
+                            ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10"
+                            : "border border-white/45 bg-white/70 text-slate-700 hover:bg-white"
+                        }`}
+                      >
+                        直接搜索
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode("ai");
+                          trackEvent("home_mode_switch", { mode: "ai" });
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                          mode === "ai"
+                            ? "bg-slate-900 text-white shadow-lg shadow-slate-900/10"
+                            : "border border-white/45 bg-white/70 text-slate-700 hover:bg-white"
+                        }`}
+                      >
+                        AI 帮找
+                      </button>
+                    </div>
+
                     <div className="relative z-10 flex flex-col gap-3 md:flex-row">
                       <div className="relative flex-1">
                         <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
                         <input
                           type="search"
                           name="q"
-                          placeholder="想写文案、做海报、写代码？直接告诉我你的任务。"
+                          value={query}
+                          onChange={(event) => {
+                            setQuery(event.target.value);
+                            if (errorText) setErrorText("");
+                          }}
+                          placeholder={modePlaceholder}
                           className="w-full rounded-[22px] border border-white/45 bg-white/80 py-4 pl-12 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-slate-300"
                         />
                       </div>
                       <button type="submit" className="btn-primary rounded-[22px] px-6 py-4 text-sm font-semibold">
-                        开始筛选
+                        {mode === "search" ? "搜索工具" : "开始推荐"}
                       </button>
                     </div>
 
-                    <div className="relative z-10 mt-4 flex flex-wrap gap-2">
-                      {quickSearches.map((item) => (
-                        <Link
-                          key={item.label}
-                          href={buildToolsHref({}, { q: item.query })}
-                          className="rounded-full border border-white/40 bg-white/70 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-white"
-                        >
-                          {item.label}
-                        </Link>
-                      ))}
-                    </div>
-
-                    <p className="relative z-10 mt-4 text-xs leading-6 text-slate-500">
-                      先说需求，再看工具。你也可以按最新、最热、免费优先、场景和人群标签继续缩小范围。
-                    </p>
+                    {errorText ? <p className="text-xs text-red-600">{errorText}</p> : null}
                   </div>
-                </form>
-              </div>
 
-              <div className="panel-base rounded-[32px] p-6 md:p-7">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">快速决策</p>
-                    <h2 className="mt-2 text-xl font-semibold text-slate-950">先看能帮你缩小范围的入口</h2>
+                  <div className="relative z-10 mt-4 flex flex-wrap gap-2">
+                    {quickExamples.map((text) => (
+                      <button
+                        key={text}
+                        type="button"
+                        onClick={() => {
+                          setQuery(text);
+                          submitByMode(text, mode);
+                        }}
+                        className="rounded-full border border-white/40 bg-white/70 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-white"
+                      >
+                        {text}
+                      </button>
+                    ))}
                   </div>
-                  <Link href="/tools" className="hidden text-sm font-medium text-slate-900 hover:underline sm:inline-flex">
-                    去目录
-                  </Link>
-                </div>
 
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  {presets.slice(0, 4).map((preset) => (
-                    <Link
-                      key={preset.id}
-                      href={buildToolsHref({}, { view: preset.id })}
-                      className="rounded-[24px] border border-white/40 bg-white/60 p-4 transition hover:bg-white/85"
-                    >
-                      <p className="text-sm font-semibold text-slate-900">{preset.label}</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{preset.description}</p>
-                      <p className="mt-3 text-xs font-medium text-slate-500">{preset.count} 个结果</p>
-                    </Link>
-                  ))}
+                  <p className="relative z-10 mt-4 text-xs leading-6 text-slate-500">
+                    当前共收录 {presets.reduce((sum, item) => sum + item.count, 0)} 个预设导航结果，可继续按最新、最热、价格与场景筛选。
+                  </p>
                 </div>
-              </div>
+              </form>
             </div>
           </div>
         </section>
@@ -116,8 +177,8 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between gap-6">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">常用分类</h2>
-                <p className="mt-2 text-sm leading-7 text-slate-600">先按任务方向缩小范围，再进入详情比较，效率会比直接看一堆链接高很多。</p>
+                <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">不是给你一堆结果，而是先帮你缩小范围。</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">按场景筛、按成本看、按上手难度选，快速缩小范围后再决策。</p>
               </div>
               <Link href="/tools" className="hidden text-sm font-medium text-slate-900 hover:underline md:inline-flex">
                 查看全部
@@ -128,7 +189,7 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
               {categories.slice(0, 4).map((category) => (
                 <Link
                   key={category.slug}
-                  href={buildToolsHref({}, { category: category.slug, page: 1 })}
+                  href={buildToolsHref({}, { category: category.slug, page: 1, mode: "search" })}
                   className="card-base rounded-[28px] p-5"
                 >
                   <div className="relative z-10">
@@ -149,9 +210,9 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between gap-6">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">按人群和场景选</h2>
+                <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">先看别人怎么用，再决定自己要不要试。</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  按真实人群和使用场景组织工具入口，让用户不是先看分类名词，而是先找到适合自己的选择。
+                  哪些场景好用，哪些地方一般，适不适合长期用，看真实反馈更有参考价值。
                 </p>
               </div>
               <Link href="/scenarios" className="hidden text-sm font-medium text-slate-900 hover:underline md:inline-flex">
@@ -184,10 +245,10 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between gap-6">
               <div>
-                <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">精选推荐工具</h2>
-                <p className="mt-2 text-sm leading-7 text-slate-600">优先展示更值得进入下一步比较的工具，先缩小范围，再看细节。</p>
+                <h2 className="text-2xl font-semibold text-slate-950 md:text-3xl">最近大家最常拿来干活的工具</h2>
+                <p className="mt-2 text-sm leading-7 text-slate-600">先从高频、成熟、容易上手的开始，不容易走偏。</p>
               </div>
-              <Link href="/tools?view=hot" className="text-sm font-medium text-slate-900 hover:underline">
+              <Link href="/tools?view=hot&mode=search" className="text-sm font-medium text-slate-900 hover:underline">
                 查看全部
               </Link>
             </div>
@@ -203,6 +264,8 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
                   url={tool.officialUrl}
                   logoPath={tool.logoPath}
                   score={tool.score}
+                  reviewCount={tool.reviewCount}
+                  accessFlags={tool.accessFlags}
                   priceLabel={detectPriceLabel(tool)}
                   decisionBadges={buildDecisionBadges({ price: tool.price, summary: tool.summary, tags: tool.tags })}
                 />
@@ -216,3 +279,4 @@ export default function HomePage({ featuredTools, categories, presets, audienceS
     </div>
   );
 }
+

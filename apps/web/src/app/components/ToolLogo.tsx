@@ -1,5 +1,6 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
+"use client";
+
+import { useState } from "react";
 import BrandMark from "./BrandMark";
 
 interface ToolLogoProps {
@@ -17,7 +18,8 @@ export default function ToolLogo({
   className = "",
   logoPath = null,
 }: ToolLogoProps) {
-  const src = resolveToolLogoPath(slug, logoPath);
+  const [failed, setFailed] = useState(false);
+  const src = failed ? null : resolveToolLogoPath(slug, logoPath);
 
   if (!src) {
     return <BrandMark label={name} size={size} />;
@@ -34,23 +36,18 @@ export default function ToolLogo({
     <div
       className={`overflow-hidden border border-white/50 bg-white/85 shadow-[0_10px_28px_rgba(15,23,42,0.08)] ${sizeClass} ${className}`}
     >
-      <img src={src} alt={`${name} logo`} className="h-full w-full object-contain p-2" loading="lazy" />
+      <img src={src} alt={`${name} logo`} className="h-full w-full object-contain p-2" loading="lazy" onError={() => setFailed(true)} />
     </div>
   );
 }
 
 function resolveToolLogoPath(slug: string, value?: string | null) {
   const normalized = normalizeLogoPath(value);
-  if (normalized && publicAssetExists(normalized)) {
+  if (normalized) {
     return normalized;
   }
 
-  const slugCandidate = encodePath(`/logos/${slug}.png`);
-  if (publicAssetExists(slugCandidate)) {
-    return slugCandidate;
-  }
-
-  return null;
+  return encodePath(`/logos/${slug}.png`);
 }
 
 function normalizeLogoPath(value?: string | null) {
@@ -71,12 +68,6 @@ function normalizeLogoPath(value?: string | null) {
 
   return encodePath(`/logos/${filename}`);
 }
-
-function publicAssetExists(assetPath: string) {
-  const relativePath = assetPath.replace(/^\/+/, "").split("/").join(path.sep);
-  return existsSync(path.join(process.cwd(), "public", relativePath));
-}
-
 function encodePath(pathname: string) {
   return pathname
     .split("/")

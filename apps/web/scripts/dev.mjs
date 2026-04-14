@@ -54,7 +54,7 @@ async function main() {
 
   const child = spawn(
     process.execPath,
-    [NEXT_CLI, "dev", "--turbopack", "--hostname", HOST, "--port", String(port)],
+    [NEXT_CLI, "dev", "--hostname", HOST, "--port", String(port)],
     {
       stdio: "inherit",
       env: {

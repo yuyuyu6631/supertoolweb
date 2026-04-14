@@ -6,9 +6,9 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, text
 
+import app.db.session as session_module
 from app.api.router import api_router
 from app.core.config import settings
-from app.db.session import SessionLocal
 from app.models.models import Tool, UserSession
 from app.services.crawler_service import build_mock_snapshot
 
@@ -27,7 +27,7 @@ def check_backend_readiness() -> tuple[bool, dict[str, object]]:
         },
     }
 
-    db = SessionLocal()
+    db = session_module.SessionLocal()
     try:
         db.execute(text("SELECT 1"))
         payload["checks"]["database"] = "ok"
