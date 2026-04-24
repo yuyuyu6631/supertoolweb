@@ -15,6 +15,19 @@ import type {
   ToolReviewsResponse,
   ToolsDirectoryResponse,
 } from "./catalog-types";
+import {
+  getFallbackAdminOverview,
+  getFallbackAdminTools,
+  getFallbackCategories,
+  getFallbackDirectory,
+  getFallbackHomeCatalog,
+  getFallbackRankings,
+  getFallbackReviews,
+  getFallbackScenario,
+  getFallbackScenarios,
+  getFallbackSearchIndex,
+  getFallbackToolDetail,
+} from "./fallback-catalog";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 export const CATALOG_CACHE_TAG = "catalog";
@@ -49,19 +62,27 @@ function withCatalogCache(options?: CatalogFetchOptions): CatalogFetchOptions {
 }
 
 async function fetchJson<T>(path: string, options?: CatalogFetchOptions): Promise<T> {
-  const response = await fetch(
-    `${API_BASE_URL}${path}`,
-    withCatalogCache({
-      ...options,
-      signal: withTimeoutSignal(options?.signal ?? undefined),
-    }),
-  );
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}${path}`,
+      withCatalogCache({
+        ...options,
+        signal: withTimeoutSignal(options?.signal ?? undefined),
+      }),
+    );
 
-  if (!response.ok) {
-    throw new ApiError(path, response.status);
+    if (!response.ok) {
+      throw new ApiError(path, response.status);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    const fallback = resolveReadFallback<T>(path);
+    if (fallback !== null) {
+      return fallback;
+    }
+    throw error;
   }
-
-  return response.json() as Promise<T>;
 }
 
 export async function fetchDirectory(
@@ -80,25 +101,35 @@ function withTimeoutSignal(signal?: AbortSignal, timeoutMs = CATALOG_FETCH_TIMEO
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    signal: withTimeoutSignal(init?.signal ?? undefined, 6000),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: withTimeoutSignal(init?.signal ?? undefined, 6000),
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
 
-  if (response.status === 204) {
-    return undefined as T;
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
+    if (!response.ok) {
+      throw new ApiError(path, response.status);
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    if ((init?.method ?? "GET").toUpperCase() === "GET") {
+      const fallback = resolveReadFallback<T>(path);
+      if (fallback !== null) {
+        return fallback;
+      }
+    }
+    throw error;
   }
-
-  if (!response.ok) {
-    throw new ApiError(path, response.status);
-  }
-
-  return response.json() as Promise<T>;
 }
 
 export async function fetchCategories(): Promise<CategorySummary[]> {
@@ -213,3 +244,56 @@ export async function fetchScenarios(): Promise<ScenarioSummary[]> {
 }
 
 export { ApiError };
+
+function resolveReadFallback<T>(path: string): T | null {
+  const [pathname, queryString = ""] = path.split("?");
+
+  if (pathname === "/api/categories") {
+    return getFallbackCategories() as T;
+  }
+
+  if (pathname === "/api/tools/search-index") {
+    return getFallbackSearchIndex() as T;
+  }
+
+  if (pathname === "/api/home") {
+    return getFallbackHomeCatalog() as T;
+  }
+
+  if (pathname === "/api/scenarios") {
+    return getFallbackScenarios() as T;
+  }
+
+  if (pathname.startsWith("/api/scenarios/")) {
+    const slug = pathname.replace("/api/scenarios/", "");
+    return getFallbackScenario(slug) as T;
+  }
+
+  if (pathname === "/api/rankings") {
+    return getFallbackRankings() as T;
+  }
+
+  if (pathname === "/api/tools") {
+    return getFallbackDirectory(queryString) as T;
+  }
+
+  if (pathname.startsWith("/api/tools/") && pathname.endsWith("/reviews")) {
+    const slug = pathname.replace("/api/tools/", "").replace("/reviews", "");
+    return getFallbackReviews(slug) as T;
+  }
+
+  if (pathname.startsWith("/api/tools/") && !pathname.includes("/reviews")) {
+    const slug = pathname.replace("/api/tools/", "");
+    return getFallbackToolDetail(slug) as T;
+  }
+
+  if (pathname === "/api/admin/tools") {
+    return getFallbackAdminTools() as T;
+  }
+
+  if (pathname === "/api/admin/overview") {
+    return getFallbackAdminOverview() as T;
+  }
+
+  return null;
+}

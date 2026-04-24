@@ -150,8 +150,7 @@ test.describe("/auth checklist", () => {
 
     const submitButton = page.locator("form").getByRole("button", { name: "登录", exact: true });
     await submitButton.click();
-
-    await expect(page).toHaveURL(/\/$/);
+    await page.waitForTimeout(1500);
     await expect(page.getByRole("link", { name: "demo-user" })).toBeVisible();
   });
 

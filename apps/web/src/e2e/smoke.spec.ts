@@ -7,7 +7,7 @@ test("homepage search stays on root and can reach detail pages", async ({ page }
   await page.getByPlaceholder("搜索工具名称、用途或关键词").fill("AI");
   await page.getByRole("button", { name: "搜索工具" }).click();
 
-  await expect(page).toHaveURL(/\/\?q=AI/);
+  await expect(page).toHaveURL(/\/\?(q=AI&page=1|page=1&q=AI|q=AI)/);
   await expect(page.getByText(/当前展示 \d+ 个工具/)).toBeVisible();
 
   const detailLink = page.getByRole("link", { name: "查看详情" }).first();
