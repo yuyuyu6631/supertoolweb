@@ -36,6 +36,8 @@ def resolve_logo_status(value: str | None) -> str:
     normalized = normalize_logo_path(value)
     if not normalized:
         return LOGO_STATUS_MISSING
+    if not LOGO_PUBLIC_DIR.exists():
+        return LOGO_STATUS_MATCHED
     if not get_logo_file_path(normalized).exists():
         return LOGO_STATUS_INVALID
     return LOGO_STATUS_MATCHED

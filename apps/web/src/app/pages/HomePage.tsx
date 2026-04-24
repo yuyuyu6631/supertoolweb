@@ -220,7 +220,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
       <main aria-busy={isPending ? "true" : "false"} className="pb-16">
         <section className="border-b border-white/20 py-5">
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
-            <div className="rounded-[24px] border border-white/70 bg-white/92 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+            <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-[0_16px_44px_rgba(15,23,42,0.045)]">
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
@@ -252,7 +252,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
 
         <section className="py-4">
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
-            <div className="rounded-[22px] border border-white/70 bg-white/88 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.05)]">
+            <div className="rounded-[22px] border border-slate-100 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
               <nav aria-label="homepage categories" className="flex flex-wrap gap-2">
                 {categoryLinks.map((item) => {
                   const itemPending = pendingHref === item.href;
@@ -276,7 +276,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
         <section className="pb-8">
           <div className="mx-auto w-full max-w-[1440px] px-4 sm:px-6 lg:px-8">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]">
-              <div className="rounded-[24px] border border-white/70 bg-white/92 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
+              <div className="rounded-[24px] border border-slate-100 bg-white p-4 shadow-[0_16px_44px_rgba(15,23,42,0.045)]">
                 <div className="flex flex-col gap-3 border-b border-slate-100 pb-4">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-wrap gap-2">
@@ -301,7 +301,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
                   </div>
 
                   {isPending ? (
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-900" />
                       {pendingLabel || "正在更新结果..."}
                     </div>
@@ -363,14 +363,14 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[20px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-500">
+                  <div className="mt-4 rounded-[20px] border border-dashed border-slate-200 bg-white px-4 py-8 text-sm text-slate-500">
                     当前没有拿到工具目录数据，请先检查首页接口和后端服务是否正常。
                   </div>
                 )}
               </div>
 
               <aside className="space-y-3">
-                <div className="rounded-[22px] border border-white/70 bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.05)]">
+                <div className="rounded-[22px] border border-slate-100 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">常用场景</p>
                     <Clock3 className="h-4 w-4 text-slate-400" />
@@ -381,7 +381,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
                         key={scenario.slug}
                         href={`/scenarios/${scenario.slug}`}
                         onClick={() => setPendingLabel(`正在打开 ${scenario.title}`)}
-                        className="block rounded-[18px] border border-slate-200 bg-slate-50 px-3 py-3 transition duration-200 hover:bg-white hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
+                        className="block rounded-[18px] border border-slate-200 bg-white px-3 py-3 transition duration-200 hover:border-slate-300 hover:shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
                       >
                         <p className="text-sm font-medium text-slate-900">{scenario.title}</p>
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{scenario.description}</p>
@@ -390,7 +390,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
                   </div>
                 </div>
 
-                <div className="rounded-[22px] border border-white/70 bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.05)]">
+                <div className="rounded-[22px] border border-slate-100 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-slate-900">热门榜单</p>
                     <Flame className="h-4 w-4 text-slate-400" />
@@ -404,7 +404,7 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
                           rememberCatalogNavigation(currentRoute);
                           setPendingLabel(`正在打开 ${tool.name}`);
                         }}
-                        className="flex items-center gap-3 rounded-[18px] border border-slate-200 bg-slate-50 px-3 py-2.5 transition duration-200 hover:bg-white hover:shadow-[0_12px_24px_rgba(15,23,42,0.06)]"
+                        className="flex items-center gap-3 rounded-[18px] border border-slate-200 bg-white px-3 py-2.5 transition duration-200 hover:border-slate-300 hover:shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
                       >
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
                           {index + 1}
@@ -418,14 +418,14 @@ export default function HomePage({ directory, hotTools, latestTools, scenarios, 
                   </div>
                 </div>
 
-                <div className="rounded-[22px] border border-white/70 bg-white/90 p-4 shadow-[0_18px_60px_rgba(15,23,42,0.05)]">
+                <div className="rounded-[22px] border border-slate-100 bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
                   <p className="text-sm font-semibold text-slate-900">提交工具</p>
                   <p className="mt-2 text-xs leading-5 text-slate-500">补充你常用但目录里还没有的工具，我们会优先收录。</p>
                   <a
                     href={TOOL_SUBMISSION_URL}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[16px] border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium text-slate-900 transition hover:bg-white"
+                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[16px] border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-300"
                   >
                     去提交
                     <ArrowUpRight className="h-4 w-4" />

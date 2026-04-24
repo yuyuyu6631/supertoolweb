@@ -174,6 +174,33 @@ def _unique_strings(values: list[str]) -> list[str]:
     return deduped
 
 
+def _is_public_catalog_garbage(tool: ToolSummary) -> bool:
+    name = tool.name.strip()
+    summary = tool.summary.strip()
+    slug = tool.slug.strip().casefold()
+
+    known_bad_slugs = {"cc-123"}
+    known_bad_values = {"cc", "cc'123"}
+    if slug in known_bad_slugs:
+        return True
+
+    normalized_name = name.casefold()
+    normalized_summary = summary.casefold()
+    if normalized_name in known_bad_values or normalized_summary in known_bad_values:
+        return True
+
+    if (
+        normalized_name
+        and normalized_name == normalized_summary
+        and not tool.officialUrl.strip()
+        and not tool.logoPath
+        and tool.score <= 0
+    ):
+        return True
+
+    return False
+
+
 def _published_reviews(tool: Tool) -> list[ToolReview]:
     return sorted(
         [review for review in tool.reviews if review.status == PUBLIC_TOOL_STATUS],
@@ -599,7 +626,10 @@ def _load_searchable_tools(db, *, status_filter: str | None = PUBLIC_TOOL_STATUS
         stmt = stmt.where(Tool.status == status_filter)
 
     rows = db.scalars(stmt).all()
-    return [SearchableTool(summary=_tool_row_to_summary(row), search_text=_build_search_text(row)) for row in rows]
+    items = [SearchableTool(summary=_tool_row_to_summary(row), search_text=_build_search_text(row)) for row in rows]
+    if status_filter == PUBLIC_TOOL_STATUS:
+        return [item for item in items if not _is_public_catalog_garbage(item.summary)]
+    return items
 
 
 def _load_summaries(db, *, status_filter: str | None = PUBLIC_TOOL_STATUS) -> list[ToolSummary]:
