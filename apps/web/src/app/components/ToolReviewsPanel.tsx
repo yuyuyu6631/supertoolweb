@@ -48,6 +48,29 @@ export default function ToolReviewsPanel({ toolSlug, reviews, summary }: ToolRev
   }, [reviews]);
 
   useEffect(() => {
+    if (reviews) {
+      return;
+    }
+
+    let active = true;
+    void fetchToolReviews(toolSlug)
+      .then((nextReviews) => {
+        if (active) {
+          setCurrentReviews(nextReviews);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setCurrentReviews(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reviews, toolSlug]);
+
+  useEffect(() => {
     if (!currentUser) {
       setMyReview(null);
       return;

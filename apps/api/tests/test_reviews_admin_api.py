@@ -1,7 +1,9 @@
 import os
 from datetime import date
+from importlib import reload
 
 from fastapi.testclient import TestClient
+import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -134,6 +136,13 @@ def test_user_review_is_upserted_and_updates_tool_aggregate():
             rows = db.scalars(select(ToolReview).where(ToolReview.tool_id == tool.id, ToolReview.user_id.is_not(None))).all()
             assert len(rows) == 1
 
+    with TestClient(app) as second_client:
+        reviews_response = second_client.get("/api/tools/chatgpt/reviews")
+        assert reviews_response.status_code == 200
+        payload = reviews_response.json()
+        assert len(payload["userReviews"]) == 1
+        assert payload["userReviews"][0]["title"] == "Updated review"
+
 
 def test_admin_routes_require_admin_role():
     with TestClient(app) as client:
@@ -224,3 +233,71 @@ def test_admin_can_manage_tools_and_rankings():
         )
         assert create_ranking.status_code == 201
         assert len(create_ranking.json()["items"]) == 2
+
+        updated_tool = client.put(
+            "/api/admin/tools/1",
+            json={
+                "slug": "chatgpt",
+                "name": "ChatGPT Updated",
+                "categorySlug": "chatbot",
+                "categoryName": "Chatbot",
+                "summary": "updated summary",
+                "description": "updated description",
+                "editorComment": "updated note",
+                "developer": "OpenAI",
+                "country": "US",
+                "city": "San Francisco",
+                "price": "Paid",
+                "platforms": "Web",
+                "officialUrl": "https://example.com/chatgpt-updated",
+                "logoPath": "",
+                "featured": True,
+                "status": "published",
+                "pricingType": "subscription",
+                "priceMinCny": 99,
+                "priceMaxCny": 199,
+                "freeAllowanceText": "",
+                "accessFlags": {"needs_vpn": False, "cn_lang": True, "cn_payment": True},
+                "tags": ["assistant", "productivity"],
+                "createdOn": "2026-04-01",
+                "lastVerifiedAt": "2026-04-18",
+            },
+        )
+        assert updated_tool.status_code == 200
+        assert updated_tool.json()["name"] == "ChatGPT Updated"
+
+        tools_after_update = client.get("/api/admin/tools")
+        assert tools_after_update.status_code == 200
+        assert any(item["name"] == "ChatGPT Updated" for item in tools_after_update.json())
+
+        public_detail = client.get("/api/tools/chatgpt")
+        assert public_detail.status_code == 200
+        assert public_detail.json()["name"] == "ChatGPT Updated"
+
+
+def test_production_like_environment_rejects_in_memory_database():
+    os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+    os.environ["RAILWAY_ENVIRONMENT"] = "production"
+
+    import app.core.config as config_module
+    import app.main as main_module
+    import app.db.session as session_module
+
+    try:
+        reload(config_module)
+        reload(session_module)
+        reload(main_module)
+
+        ready, payload = main_module.check_backend_readiness()
+        assert ready is False
+        assert payload["reason"] == "persistent_database_required"
+        assert payload["checks"]["database_config"] == "error"
+        with pytest.raises(RuntimeError, match="persistent database"):
+            with TestClient(main_module.create_app()):
+                pass
+    finally:
+        os.environ.pop("RAILWAY_ENVIRONMENT", None)
+        os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
+        reload(config_module)
+        reload(session_module)
+        reload(main_module)

@@ -22,20 +22,39 @@ logger = logging.getLogger(__name__)
 request_logger = logging.getLogger("app.request")
 
 
+def ensure_persistent_database_config() -> tuple[bool, str | None]:
+    if settings.is_production_like and not settings.uses_persistent_database:
+        return False, "persistent_database_required"
+    return True, None
+
+
 def check_backend_readiness() -> tuple[bool, dict[str, object]]:
     payload: dict[str, object] = {
         "status": "ok",
         "reason": None,
         "detail": "API and database are ready.",
         "checks": {
+            "database_config": "pending",
             "database": "pending",
             "catalog": "pending",
             "auth": "pending",
         },
     }
 
+    config_ready, config_reason = ensure_persistent_database_config()
+    if not config_ready:
+        payload["status"] = "not_ready"
+        payload["reason"] = config_reason
+        payload["detail"] = "Persistent database configuration is required for this environment."
+        payload["checks"]["database_config"] = "error"
+        for name, value in list(payload["checks"].items()):
+            if value == "pending":
+                payload["checks"][name] = "skipped"
+        return False, payload
+
     db = session_module.SessionLocal()
     try:
+        payload["checks"]["database_config"] = "ok"
         db.execute(text("SELECT 1"))
         payload["checks"]["database"] = "ok"
 
@@ -49,6 +68,7 @@ def check_backend_readiness() -> tuple[bool, dict[str, object]]:
     except Exception as exc:
         failed_check = next((name for name, value in payload["checks"].items() if value != "ok"), "database")
         reason_map = {
+            "database_config": "persistent_database_required",
             "database": "database_unavailable",
             "catalog": "catalog_query_failed",
             "auth": "auth_query_failed",
@@ -70,6 +90,9 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        config_ready, config_reason = ensure_persistent_database_config()
+        if not config_ready:
+            raise RuntimeError(f"Refusing to start without a persistent database: {config_reason}")
         local_scheduler.add_job(build_mock_snapshot, "interval", minutes=60, kwargs={"source_name": "scheduled"})
         local_scheduler.start()
         try:

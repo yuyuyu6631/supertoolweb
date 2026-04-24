@@ -11,6 +11,7 @@ type ErrorDetail = string | Record<string, string> | null;
 type ReadinessReason =
   | "ready"
   | "unreachable"
+  | "persistent_database_required"
   | "database_unavailable"
   | "catalog_query_failed"
   | "auth_query_failed"
@@ -71,7 +72,12 @@ function readinessMessage(reason: ReadinessReason): string | null {
   if (reason === "unreachable") {
     return "当前无法连接后端服务，请先确认 API 已启动。";
   }
-  if (reason === "database_unavailable" || reason === "catalog_query_failed" || reason === "auth_query_failed") {
+  if (
+    reason === "persistent_database_required"
+    || reason === "database_unavailable"
+    || reason === "catalog_query_failed"
+    || reason === "auth_query_failed"
+  ) {
     return "后端已经响应，但数据库或鉴权还没准备好。请先确认 MySQL 可用后再重试。";
   }
   return "后端已经启动，但服务还没有准备完成，请稍后再试。";

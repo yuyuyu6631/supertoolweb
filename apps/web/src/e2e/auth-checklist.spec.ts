@@ -126,8 +126,18 @@ test.describe("/auth checklist", () => {
   });
 
   test("登录提交后的 loading 状态和恢复正常", async ({ page }) => {
-    await page.route("**/api/auth/login", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 900));
+    let loggedIn = false;
+
+    await page.route("**/api/auth/me", async (route) => {
+      if (!loggedIn) {
+        await route.fulfill({
+          status: 401,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "not logged in" }),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -141,7 +151,25 @@ test.describe("/auth checklist", () => {
         }),
       });
     });
-    await openAuth(page);
+
+    await page.route("**/api/auth/login", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      loggedIn = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: 1,
+          username: "demo-user",
+          email: "demo@example.com",
+          status: "active",
+          role: "user",
+          createdAt: "2026-03-31T00:00:00Z",
+        }),
+      });
+    });
+    await page.goto("/auth", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
 
     await page.locator(loginIdentifier).fill("demo@example.com");
     await page.locator(loginPassword).fill("12345678");
@@ -150,7 +178,7 @@ test.describe("/auth checklist", () => {
 
     const submitButton = page.locator("form").getByRole("button", { name: "登录", exact: true });
     await submitButton.click();
-    await page.waitForTimeout(1500);
+    await page.waitForURL(/\/tools$/);
     await expect(page.getByRole("link", { name: "demo-user" })).toBeVisible();
   });
 

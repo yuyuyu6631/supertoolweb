@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -11,6 +12,7 @@ ROOT_DIR = Path(__file__).resolve().parents[4]
 class Settings(BaseSettings):
     app_name: str = "Xingdianping API"
     api_prefix: str = "/api"
+    environment: str = "development"
     database_url: str = "sqlite+pysqlite:///:memory:"
     redis_url: str = "redis://localhost:6379/0"
     auth_secret_key: str = "dev-auth-secret-key"
@@ -93,6 +95,45 @@ class Settings(BaseSettings):
         if normalized not in {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"}:
             raise ValueError("LOG_LEVEL must be one of: CRITICAL, ERROR, WARNING, INFO, DEBUG")
         return normalized
+
+    @field_validator("environment", mode="before")
+    @classmethod
+    def normalize_environment(cls, value: str) -> str:
+        normalized = value.strip().lower() if isinstance(value, str) else "development"
+        aliases = {
+            "dev": "development",
+            "prod": "production",
+        }
+        return aliases.get(normalized, normalized)
+
+    @property
+    def is_railway(self) -> bool:
+        return bool(
+            os.getenv("RAILWAY_ENVIRONMENT")
+            or os.getenv("RAILWAY_PROJECT_ID")
+            or os.getenv("RAILWAY_SERVICE_ID")
+        )
+
+    @property
+    def is_production_like(self) -> bool:
+        return self.environment in {"production", "staging"} or self.is_railway
+
+    @property
+    def is_in_memory_sqlite(self) -> bool:
+        normalized = self.database_url.replace("+pysqlite", "")
+        return normalized.startswith("sqlite:///:memory:")
+
+    @property
+    def is_sqlite(self) -> bool:
+        return self.database_url.startswith("sqlite")
+
+    @property
+    def uses_persistent_database(self) -> bool:
+        if self.is_in_memory_sqlite:
+            return False
+        if self.is_sqlite:
+            return self.database_url.startswith("sqlite:///")
+        return bool(self.database_url.strip())
 
 
 settings = Settings()

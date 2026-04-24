@@ -5,11 +5,11 @@
 
 ## 摘要
 
-- 生成时间：2026-04-22T03:37:40.152Z
+- 生成时间：2026-04-24T02:52:16.464Z
 - 前端路由：15
 - API 端点：36
 - 数据模型：17
-- 测试文件：40
+- 测试文件：41
 
 ## 前端路由
 
@@ -98,13 +98,14 @@
 
 ### Web unit/integration
 
-- 数量：19
+- 数量：20
 - `apps/web/src/app/components/__tests__/BackToResultsLink.test.tsx`
 - `apps/web/src/app/components/__tests__/CommandPalette.test.tsx`
 - `apps/web/src/app/components/__tests__/CompareToolsGrid.test.tsx`
 - `apps/web/src/app/components/__tests__/Header.test.tsx`
 - `apps/web/src/app/components/__tests__/ToolCard.test.tsx`
 - `apps/web/src/app/components/__tests__/ToolLogo.test.tsx`
+- `apps/web/src/app/components/__tests__/ToolReviewsPanel.test.tsx`
 - `apps/web/src/app/components/admin/__tests__/AdminAccessGate.test.tsx`
 - `apps/web/src/app/components/admin/__tests__/AdminOverviewDashboard.test.tsx`
 - `apps/web/src/app/components/auth/__tests__/AuthCard.test.tsx`

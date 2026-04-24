@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-04-22T03:37:40.152Z",
+  "generatedAt": "2026-04-24T02:52:16.464Z",
   "summary": {
     "frontendRouteCount": 15,
     "apiEndpointCount": 36,
     "dataModelCount": 17,
-    "testFileCount": 40
+    "testFileCount": 41
   },
   "frontendRoutes": [
     {
@@ -628,7 +628,7 @@
   "tests": [
     {
       "name": "Web unit/integration",
-      "count": 19,
+      "count": 20,
       "files": [
         "apps/web/src/app/components/__tests__/BackToResultsLink.test.tsx",
         "apps/web/src/app/components/__tests__/CommandPalette.test.tsx",
@@ -636,6 +636,7 @@
         "apps/web/src/app/components/__tests__/Header.test.tsx",
         "apps/web/src/app/components/__tests__/ToolCard.test.tsx",
         "apps/web/src/app/components/__tests__/ToolLogo.test.tsx",
+        "apps/web/src/app/components/__tests__/ToolReviewsPanel.test.tsx",
         "apps/web/src/app/components/admin/__tests__/AdminAccessGate.test.tsx",
         "apps/web/src/app/components/admin/__tests__/AdminOverviewDashboard.test.tsx",
         "apps/web/src/app/components/auth/__tests__/AuthCard.test.tsx",

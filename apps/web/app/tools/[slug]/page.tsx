@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import ToolDetailPage from "@/src/app/pages/ToolDetailPage";
-import { fetchDirectory, fetchToolDetail } from "@/src/app/lib/catalog-api";
+import { fetchDirectory, fetchToolDetail, fetchToolReviews } from "@/src/app/lib/catalog-api";
 import { slugifyLabel } from "@/src/app/lib/catalog-utils";
 import { buildAccessBadges, formatPricingType } from "@/src/app/lib/tool-display";
 
@@ -54,6 +54,7 @@ export default async function Page({ params }: ToolDetailRouteProps) {
 
   const relatedDirectory = await fetchDirectory(`category=${slugifyLabel(tool.category)}&page=1&page_size=4`).catch(() => null);
   const relatedTools = relatedDirectory ? relatedDirectory.items.filter((item) => item.slug !== slug).slice(0, 3) : [];
+  const reviews = await fetchToolReviews(slug).catch(() => null);
 
-  return <ToolDetailPage tool={tool} relatedTools={relatedTools} reviews={null} />;
+  return <ToolDetailPage tool={tool} relatedTools={relatedTools} reviews={reviews} />;
 }

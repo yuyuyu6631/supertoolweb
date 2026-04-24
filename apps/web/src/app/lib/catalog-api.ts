@@ -16,13 +16,10 @@ import type {
   ToolsDirectoryResponse,
 } from "./catalog-types";
 import {
-  getFallbackAdminOverview,
-  getFallbackAdminTools,
   getFallbackCategories,
   getFallbackDirectory,
   getFallbackHomeCatalog,
   getFallbackRankings,
-  getFallbackReviews,
   getFallbackScenario,
   getFallbackScenarios,
   getFallbackSearchIndex,
@@ -172,12 +169,12 @@ export async function fetchRankings(): Promise<RankingSection[]> {
 }
 
 export async function fetchToolReviews(slug: string): Promise<ToolReviewsResponse> {
-  return fetchJson<ToolReviewsResponse>(`/api/tools/${slug}/reviews`);
+  return requestJson<ToolReviewsResponse>(`/api/tools/${slug}/reviews`, { method: "GET", cache: "no-store" });
 }
 
 export async function fetchMyToolReview(slug: string): Promise<ToolReviewItem | null> {
   try {
-    return await requestJson<ToolReviewItem | null>(`/api/tools/${slug}/reviews/me`, { method: "GET" });
+    return await requestJson<ToolReviewItem | null>(`/api/tools/${slug}/reviews/me`, { method: "GET", cache: "no-store" });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       return null;
@@ -197,15 +194,15 @@ export async function saveMyToolReview(
 }
 
 export async function fetchAdminTools(): Promise<AdminToolListItem[]> {
-  return requestJson<AdminToolListItem[]>("/api/admin/tools", { method: "GET" });
+  return requestJson<AdminToolListItem[]>("/api/admin/tools", { method: "GET", cache: "no-store" });
 }
 
 export async function fetchAdminOverview(): Promise<AdminOverviewResponse> {
-  return requestJson<AdminOverviewResponse>("/api/admin/overview", { method: "GET" });
+  return requestJson<AdminOverviewResponse>("/api/admin/overview", { method: "GET", cache: "no-store" });
 }
 
 export async function fetchAdminTool(toolId: number): Promise<ToolDetail> {
-  return requestJson<ToolDetail>(`/api/admin/tools/${toolId}`, { method: "GET" });
+  return requestJson<ToolDetail>(`/api/admin/tools/${toolId}`, { method: "GET", cache: "no-store" });
 }
 
 export async function saveAdminTool(payload: object, toolId?: number): Promise<ToolDetail> {
@@ -217,7 +214,7 @@ export async function saveAdminTool(payload: object, toolId?: number): Promise<T
 
 export async function fetchAdminReviews(toolSlug?: string): Promise<AdminReviewListItem[]> {
   const query = toolSlug ? `?tool_slug=${encodeURIComponent(toolSlug)}` : "";
-  return requestJson<AdminReviewListItem[]>(`/api/admin/reviews${query}`, { method: "GET" });
+  return requestJson<AdminReviewListItem[]>(`/api/admin/reviews${query}`, { method: "GET", cache: "no-store" });
 }
 
 export async function deleteAdminReview(reviewId: number): Promise<void> {
@@ -277,22 +274,9 @@ function resolveReadFallback<T>(path: string): T | null {
     return getFallbackDirectory(queryString) as T;
   }
 
-  if (pathname.startsWith("/api/tools/") && pathname.endsWith("/reviews")) {
-    const slug = pathname.replace("/api/tools/", "").replace("/reviews", "");
-    return getFallbackReviews(slug) as T;
-  }
-
   if (pathname.startsWith("/api/tools/") && !pathname.includes("/reviews")) {
     const slug = pathname.replace("/api/tools/", "");
     return getFallbackToolDetail(slug) as T;
-  }
-
-  if (pathname === "/api/admin/tools") {
-    return getFallbackAdminTools() as T;
-  }
-
-  if (pathname === "/api/admin/overview") {
-    return getFallbackAdminOverview() as T;
   }
 
   return null;

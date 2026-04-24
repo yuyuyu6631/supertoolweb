@@ -289,7 +289,12 @@ class TestB4_异常处理:
         assert resp.status_code == 200
         payload = resp.json()
         assert payload["status"] == "ok"
-        assert payload["checks"] == {"database": "ok", "catalog": "ok", "auth": "ok"}
+        assert payload["checks"] == {
+            "database_config": "ok",
+            "database": "ok",
+            "catalog": "ok",
+            "auth": "ok",
+        }
 
     def test_readiness_endpoint_returns_503_when_database_check_fails(self, monkeypatch):
         class BrokenSession:
